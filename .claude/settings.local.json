@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:api.anthropic.com)",
+      "mcp__Claude_in_Chrome__tabs_context_mcp",
+      "Bash(curl -sI \"https://api.anthropic.com/v1/design/h/UCeSfTOIF80YRGxUShciTA?open_file=PareidoMap.html\")",
+      "Bash(curl -s \"https://api.anthropic.com/v1/design/h/UCeSfTOIF80YRGxUShciTA?open_file=PareidoMap.html\" -H \"Accept: text/html\")",
+      "Bash(curl -s \"https://api.anthropic.com/v1/design/h/UCeSfTOIF80YRGxUShciTA?open_file=PareidoMap.html\" -H \"Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8\" -H \"User-Agent: Mozilla/5.0\")",
+      "Bash(unzip /Users/kdo/Downloads/PareidoMap-handoff.zip -d .)",
+      "Bash(npm install *)",
+      "mcp__Claude_Preview__preview_start"
+    ]
+  }
+}

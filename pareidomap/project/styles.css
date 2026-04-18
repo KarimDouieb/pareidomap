@@ -1,0 +1,310 @@
+/* PareidoMap — shadcn-style mobile, white + Klein blue, hand-drawn touches */
+@import url('https://fonts.googleapis.com/css2?family=Caveat:wght@400;600&family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&display=swap');
+
+:root {
+  --bg:        #FFFFFF;
+  --bg-2:      #FAFAFA;
+  --card:      #FFFFFF;
+  --border:    #E5E5E5;
+  --border-2:  #D4D4D4;
+  --muted:     #F5F5F5;
+  --muted-fg:  #737373;
+  --fg:        #0A0A0A;
+  --fg-soft:   #404040;
+  --accent:    #002FA7;          /* Yves Klein Blue (IKB) */
+  --accent-fg: #FFFFFF;
+  --accent-soft:#E6EBF7;
+
+  --sans:    'Geist', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --mono:    'Geist Mono', ui-monospace, Menlo, monospace;
+  --hand:    'Caveat', 'Comic Sans MS', cursive;
+  --serif:   'Instrument Serif', Georgia, serif;
+
+  --r-sm: 6px;
+  --r:    10px;
+  --r-lg: 14px;
+  --r-xl: 20px;
+}
+
+* { box-sizing: border-box; }
+html, body {
+  margin: 0;
+  background: #1f2025;
+  font-family: var(--sans);
+  color: var(--fg);
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+.stage {
+  min-height: 100vh;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 40px 20px 80px;
+  gap: 44px;
+  flex-wrap: wrap;
+  background: radial-gradient(ellipse at top, #2a2c33 0%, #16171a 70%);
+}
+
+/* phone label above each device */
+.phone-label {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.5);
+  margin-bottom: 12px;
+  text-align: center;
+  display: flex; gap: 8px; justify-content: center;
+}
+.phone-num { color: rgba(255,255,255,0.3); }
+
+/* generic screen frame */
+.screen {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column;
+  background: var(--bg);
+}
+
+/* shadcn-ish primitives */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  font-family: var(--sans); font-size: 14px; font-weight: 500;
+  height: 44px; padding: 0 18px; border-radius: var(--r);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: background .15s ease, border-color .15s ease, transform .1s ease;
+  letter-spacing: -0.01em;
+}
+.btn:active { transform: translateY(0.5px); }
+
+.btn-primary {
+  background: var(--accent);
+  color: var(--accent-fg);
+}
+.btn-primary:hover { background: #002080; }
+
+.btn-outline {
+  background: var(--bg);
+  color: var(--fg);
+  border: 1px solid var(--border);
+}
+.btn-outline:hover { background: var(--muted); }
+
+.btn-ghost {
+  background: transparent;
+  color: var(--fg);
+}
+.btn-ghost:hover { background: var(--muted); }
+
+.btn-icon {
+  width: 38px; height: 38px; padding: 0;
+  border-radius: var(--r);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--fg);
+  display: inline-flex; align-items: center; justify-content: center;
+  cursor: pointer;
+}
+.btn-icon:hover { background: var(--muted); }
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+}
+
+.label {
+  font-size: 11px; font-weight: 500; color: var(--muted-fg);
+  letter-spacing: 0.04em; text-transform: uppercase;
+  font-family: var(--mono);
+}
+
+.kbd {
+  font-family: var(--mono); font-size: 10.5px;
+  padding: 2px 6px; border-radius: 4px;
+  background: var(--muted); color: var(--muted-fg);
+  border: 1px solid var(--border);
+}
+
+.divider { height: 1px; background: var(--border); }
+
+/* hand-drawn ornaments */
+.hand-underline {
+  position: relative;
+  display: inline-block;
+}
+.hand-underline::after {
+  content: '';
+  position: absolute;
+  left: -4px; right: -4px; bottom: -8px;
+  height: 8px;
+  background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 8' fill='none' stroke='%23002FA7' stroke-width='2' stroke-linecap='round'><path d='M2 5 Q 25 1 50 4 T 98 3'/></svg>") no-repeat center / 100% 100%;
+}
+.hand-circle {
+  position: relative;
+  display: inline-block;
+}
+.hand-circle::before {
+  content: '';
+  position: absolute; inset: -8px -10px;
+  background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 50' fill='none' stroke='%23002FA7' stroke-width='1.6' stroke-linecap='round'><path d='M14 24 Q 14 6 60 6 Q 110 8 110 24 Q 108 44 60 44 Q 16 44 14 24 Z'/></svg>") no-repeat center / 100% 100%;
+}
+
+.hand-script {
+  font-family: var(--hand);
+  font-weight: 600;
+  color: var(--accent);
+  font-size: 22px;
+  line-height: 1;
+}
+
+/* shadcn-like switch */
+.switch {
+  width: 36px; height: 20px; border-radius: 999px;
+  background: var(--border-2);
+  border: none;
+  position: relative; cursor: pointer;
+  transition: background .15s ease;
+  flex-shrink: 0;
+}
+.switch::after {
+  content: '';
+  position: absolute; top: 2px; left: 2px;
+  width: 16px; height: 16px; border-radius: 999px;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.18);
+  transition: left .15s ease;
+}
+.switch.on { background: var(--accent); }
+.switch.on::after { left: 18px; }
+
+/* swatch */
+.swatch {
+  width: 28px; height: 28px; border-radius: 999px;
+  border: 1px solid var(--border);
+  cursor: pointer;
+  position: relative;
+}
+.swatch.active::after {
+  content: '';
+  position: absolute; inset: -4px;
+  border-radius: 999px;
+  border: 1.5px solid var(--accent);
+}
+
+/* segmented control */
+.seg {
+  display: inline-flex;
+  background: var(--muted);
+  border-radius: var(--r);
+  padding: 3px;
+  gap: 2px;
+}
+.seg button {
+  padding: 6px 12px;
+  background: transparent; border: none;
+  font-family: var(--sans); font-size: 12px; font-weight: 500;
+  color: var(--muted-fg);
+  border-radius: 7px;
+  cursor: pointer;
+}
+.seg button.active {
+  background: var(--bg);
+  color: var(--fg);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+}
+
+/* dot pulse */
+@keyframes dotpulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.5); opacity: 0.4; }
+}
+
+/* dashed focus ring (camera) */
+@keyframes dashspin { to { stroke-dashoffset: -40; } }
+.dash-ring { animation: dashspin 6s linear infinite; }
+
+/* mascot float */
+@keyframes floaty { 0%,100% {transform:translateY(0);} 50% {transform:translateY(-6px);} }
+.floaty { animation: floaty 2.4s ease-in-out infinite; }
+@keyframes spin-slow { to { transform: rotate(360deg); } }
+.spin-slow { animation: spin-slow 18s linear infinite; }
+
+/* gallery thumbs */
+.thumb {
+  position: relative;
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  border: 1px solid var(--border);
+  background: var(--muted);
+  aspect-ratio: 1 / 1;
+}
+
+/* tabs (bottom nav shadcn-y) */
+.tabbar {
+  display: flex; justify-content: space-around;
+  padding: 10px 8px 18px;
+  border-top: 1px solid var(--border);
+  background: var(--bg);
+}
+.tabbar button {
+  background: transparent; border: none;
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  padding: 6px 10px; cursor: pointer;
+  font-family: var(--sans); font-size: 10px; font-weight: 500;
+  color: var(--muted-fg);
+}
+.tabbar button.active { color: var(--accent); }
+
+/* tweaks panel */
+.tweaks-btn {
+  position: fixed; right: 16px; bottom: 16px; z-index: 1000;
+  background: #fff; color: #0A0A0A;
+  border: 1px solid #d4d4d4;
+  font-family: var(--mono);
+  font-size: 11px;
+  padding: 10px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.18);
+}
+.tweaks-panel {
+  position: fixed; right: 16px; bottom: 64px; z-index: 1000;
+  width: 280px;
+  background: #fff; color: #0A0A0A;
+  border: 1px solid #e5e5e5;
+  border-radius: 14px;
+  padding: 16px;
+  font-family: var(--sans);
+  font-size: 12px;
+  box-shadow: 0 16px 40px rgba(0,0,0,0.25);
+}
+.tweaks-panel h4 {
+  margin: 0 0 8px;
+  font-size: 10px; letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted-fg);
+  font-weight: 500;
+  font-family: var(--mono);
+}
+.tweaks-panel .row {
+  display: flex; gap: 6px; flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+.tweaks-panel .row button {
+  background: #fff; color: #0A0A0A;
+  border: 1px solid #e5e5e5;
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-family: var(--sans);
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.tweaks-panel .row button.active {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}

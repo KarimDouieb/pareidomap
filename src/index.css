@@ -1,0 +1,66 @@
+@import url('https://fonts.googleapis.com/css2?family=Caveat:wght@400;600&family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background:        0 0% 100%;
+    --foreground:        0 0% 3.9%;
+    --card:              0 0% 100%;
+    --card-foreground:   0 0% 3.9%;
+    --muted:             0 0% 96.1%;
+    --muted-foreground:  0 0% 45.1%;
+    --border:            0 0% 89.8%;
+    --input:             0 0% 89.8%;
+    --primary:           223 100% 33%;   /* Klein Blue #002FA7 */
+    --primary-foreground:0 0% 100%;
+    --accent:            223 100% 33%;
+    --accent-foreground: 0 0% 100%;
+    --ring:              223 100% 33%;
+
+    --radius-sm: 6px;
+    --radius:    10px;
+    --radius-lg: 14px;
+    --radius-xl: 20px;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Geist', ui-sans-serif, system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+}
+
+@layer utilities {
+  /* Hand-drawn circle around inline text */
+  .hand-circle {
+    position: relative;
+    display: inline-block;
+  }
+  .hand-circle::before {
+    content: '';
+    position: absolute;
+    inset: -8px -10px;
+    background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 50' fill='none' stroke='%23002FA7' stroke-width='1.6' stroke-linecap='round'><path d='M14 24 Q 14 6 60 6 Q 110 8 110 24 Q 108 44 60 44 Q 16 44 14 24 Z'/></svg>") no-repeat center / 100% 100%;
+    pointer-events: none;
+  }
+
+  /* Hand-drawn underline */
+  .hand-underline {
+    position: relative;
+    display: inline-block;
+  }
+  .hand-underline::after {
+    content: '';
+    position: absolute;
+    left: -4px; right: -4px; bottom: -8px;
+    height: 8px;
+    background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 8' fill='none' stroke='%23002FA7' stroke-width='2' stroke-linecap='round'><path d='M2 5 Q 25 1 50 4 T 98 3'/></svg>") no-repeat center / 100% 100%;
+  }
+}

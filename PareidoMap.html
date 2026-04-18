@@ -1,0 +1,1761 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>PareidoMap — Mobile App</title>
+
+  <style>
+/* PareidoMap — shadcn-style mobile, white + Klein blue, hand-drawn touches */
+@import url('https://fonts.googleapis.com/css2?family=Caveat:wght@400;600&family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&display=swap');
+
+:root {
+  --bg:        #FFFFFF;
+  --bg-2:      #FAFAFA;
+  --card:      #FFFFFF;
+  --border:    #E5E5E5;
+  --border-2:  #D4D4D4;
+  --muted:     #F5F5F5;
+  --muted-fg:  #737373;
+  --fg:        #0A0A0A;
+  --fg-soft:   #404040;
+  --accent:    #002FA7;
+  --accent-fg: #FFFFFF;
+  --accent-soft:#E6EBF7;
+
+  --sans:    'Geist', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --mono:    'Geist Mono', ui-monospace, Menlo, monospace;
+  --hand:    'Caveat', 'Comic Sans MS', cursive;
+  --serif:   'Instrument Serif', Georgia, serif;
+
+  --r-sm: 6px;
+  --r:    10px;
+  --r-lg: 14px;
+  --r-xl: 20px;
+}
+
+* { box-sizing: border-box; }
+html, body {
+  margin: 0;
+  background: #1f2025;
+  font-family: var(--sans);
+  color: var(--fg);
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+.stage {
+  min-height: 100vh;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 40px 20px 80px;
+  gap: 44px;
+  flex-wrap: wrap;
+  background: radial-gradient(ellipse at top, #2a2c33 0%, #16171a 70%);
+}
+
+.phone-label {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.5);
+  margin-bottom: 12px;
+  text-align: center;
+  display: flex; gap: 8px; justify-content: center;
+}
+.phone-num { color: rgba(255,255,255,0.3); }
+
+.screen {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column;
+  background: var(--bg);
+}
+
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  font-family: var(--sans); font-size: 14px; font-weight: 500;
+  height: 44px; padding: 0 18px; border-radius: var(--r);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: background .15s ease, border-color .15s ease, transform .1s ease;
+  letter-spacing: -0.01em;
+}
+.btn:active { transform: translateY(0.5px); }
+
+.btn-primary {
+  background: var(--accent);
+  color: var(--accent-fg);
+}
+.btn-primary:hover { background: #002080; }
+
+.btn-outline {
+  background: var(--bg);
+  color: var(--fg);
+  border: 1px solid var(--border);
+}
+.btn-outline:hover { background: var(--muted); }
+
+.btn-ghost {
+  background: transparent;
+  color: var(--fg);
+}
+.btn-ghost:hover { background: var(--muted); }
+
+.btn-icon {
+  width: 38px; height: 38px; padding: 0;
+  border-radius: var(--r);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--fg);
+  display: inline-flex; align-items: center; justify-content: center;
+  cursor: pointer;
+}
+.btn-icon:hover { background: var(--muted); }
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+}
+
+.label {
+  font-size: 11px; font-weight: 500; color: var(--muted-fg);
+  letter-spacing: 0.04em; text-transform: uppercase;
+  font-family: var(--mono);
+}
+
+.kbd {
+  font-family: var(--mono); font-size: 10.5px;
+  padding: 2px 6px; border-radius: 4px;
+  background: var(--muted); color: var(--muted-fg);
+  border: 1px solid var(--border);
+}
+
+.divider { height: 1px; background: var(--border); }
+
+.hand-underline {
+  position: relative;
+  display: inline-block;
+}
+.hand-underline::after {
+  content: '';
+  position: absolute;
+  left: -4px; right: -4px; bottom: -8px;
+  height: 8px;
+  background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 8' fill='none' stroke='%23002FA7' stroke-width='2' stroke-linecap='round'><path d='M2 5 Q 25 1 50 4 T 98 3'/></svg>") no-repeat center / 100% 100%;
+}
+.hand-circle {
+  position: relative;
+  display: inline-block;
+}
+.hand-circle::before {
+  content: '';
+  position: absolute; inset: -8px -10px;
+  background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 50' fill='none' stroke='%23002FA7' stroke-width='1.6' stroke-linecap='round'><path d='M14 24 Q 14 6 60 6 Q 110 8 110 24 Q 108 44 60 44 Q 16 44 14 24 Z'/></svg>") no-repeat center / 100% 100%;
+}
+
+.hand-script {
+  font-family: var(--hand);
+  font-weight: 600;
+  color: var(--accent);
+  font-size: 22px;
+  line-height: 1;
+}
+
+.switch {
+  width: 36px; height: 20px; border-radius: 999px;
+  background: var(--border-2);
+  border: none;
+  position: relative; cursor: pointer;
+  transition: background .15s ease;
+  flex-shrink: 0;
+}
+.switch::after {
+  content: '';
+  position: absolute; top: 2px; left: 2px;
+  width: 16px; height: 16px; border-radius: 999px;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.18);
+  transition: left .15s ease;
+}
+.switch.on { background: var(--accent); }
+.switch.on::after { left: 18px; }
+
+.swatch {
+  width: 28px; height: 28px; border-radius: 999px;
+  border: 1px solid var(--border);
+  cursor: pointer;
+  position: relative;
+}
+.swatch.active::after {
+  content: '';
+  position: absolute; inset: -4px;
+  border-radius: 999px;
+  border: 1.5px solid var(--accent);
+}
+
+.seg {
+  display: inline-flex;
+  background: var(--muted);
+  border-radius: var(--r);
+  padding: 3px;
+  gap: 2px;
+}
+.seg button {
+  padding: 6px 12px;
+  background: transparent; border: none;
+  font-family: var(--sans); font-size: 12px; font-weight: 500;
+  color: var(--muted-fg);
+  border-radius: 7px;
+  cursor: pointer;
+}
+.seg button.active {
+  background: var(--bg);
+  color: var(--fg);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+}
+
+@keyframes dotpulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.5); opacity: 0.4; }
+}
+
+@keyframes dashspin { to { stroke-dashoffset: -40; } }
+.dash-ring { animation: dashspin 6s linear infinite; }
+
+@keyframes floaty { 0%,100% {transform:translateY(0);} 50% {transform:translateY(-6px);} }
+.floaty { animation: floaty 2.4s ease-in-out infinite; }
+@keyframes spin-slow { to { transform: rotate(360deg); } }
+.spin-slow { animation: spin-slow 18s linear infinite; }
+
+.thumb {
+  position: relative;
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  border: 1px solid var(--border);
+  background: var(--muted);
+  aspect-ratio: 1 / 1;
+}
+
+.tabbar {
+  display: flex; justify-content: space-around;
+  padding: 10px 8px 18px;
+  border-top: 1px solid var(--border);
+  background: var(--bg);
+}
+.tabbar button {
+  background: transparent; border: none;
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  padding: 6px 10px; cursor: pointer;
+  font-family: var(--sans); font-size: 10px; font-weight: 500;
+  color: var(--muted-fg);
+}
+.tabbar button.active { color: var(--accent); }
+
+.tweaks-btn {
+  position: fixed; right: 16px; bottom: 16px; z-index: 1000;
+  background: #fff; color: #0A0A0A;
+  border: 1px solid #d4d4d4;
+  font-family: var(--mono);
+  font-size: 11px;
+  padding: 10px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.18);
+}
+.tweaks-panel {
+  position: fixed; right: 16px; bottom: 64px; z-index: 1000;
+  width: 280px;
+  background: #fff; color: #0A0A0A;
+  border: 1px solid #e5e5e5;
+  border-radius: 14px;
+  padding: 16px;
+  font-family: var(--sans);
+  font-size: 12px;
+  box-shadow: 0 16px 40px rgba(0,0,0,0.25);
+}
+.tweaks-panel h4 {
+  margin: 0 0 8px;
+  font-size: 10px; letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted-fg);
+  font-weight: 500;
+  font-family: var(--mono);
+}
+.tweaks-panel .row {
+  display: flex; gap: 6px; flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+.tweaks-panel .row button {
+  background: #fff; color: #0A0A0A;
+  border: 1px solid #e5e5e5;
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-family: var(--sans);
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.tweaks-panel .row button.active {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+  </style>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+
+<div id="root"></div>
+
+<script type="text/babel">
+
+// ─── regions.jsx ────────────────────────────────────────────────────────────
+
+const REGIONS = {
+  italy: {
+    name: 'ITALY',
+    subtitle: 'Italia — Southern Europe',
+    viewBox: '0 0 200 240',
+    path: 'M80 30 L98 24 L108 30 L118 38 L130 32 L138 40 L132 54 L120 62 L112 74 L108 88 L112 100 L118 112 L124 126 L130 142 L134 156 L142 164 L156 168 L168 178 L164 192 L152 196 L142 192 L136 182 L128 176 L118 172 L108 168 L100 158 L94 146 L92 132 L88 118 L80 108 L72 98 L66 88 L62 78 L58 68 L62 58 L68 48 L76 38 Z',
+    extras: [
+      { type: 'island', path: 'M110 204 L 126 200 L 142 204 L 148 212 L 140 218 L 122 216 L 108 210 Z' },
+      { type: 'island', path: 'M42 132 L 56 128 L 62 140 L 58 156 L 46 160 L 38 148 Z' },
+    ],
+    bordering: [
+      { label: 'FR', path: 'M20 20 L62 36 L58 68 L20 60 Z' },
+      { label: 'CH', path: 'M62 36 L108 20 L118 38 L68 48 Z' },
+      { label: 'AT', path: 'M108 20 L170 18 L140 40 L118 38 Z' },
+      { label: 'SI', path: 'M140 40 L180 30 L168 56 L132 54 Z' },
+      { label: 'HR', path: 'M168 56 L188 70 L180 92 L156 82 Z' },
+    ],
+    cities: [
+      { x: 92,  y: 52,  name: 'MILAN',    dot: true },
+      { x: 104, y: 84,  name: 'FIRENZE',  dot: true },
+      { x: 118, y: 108, name: 'ROMA',     capital: true },
+      { x: 140, y: 156, name: 'NAPOLI',   dot: true },
+      { x: 128, y: 206, name: 'PALERMO',  dot: true },
+    ],
+    seas: [
+      { x: 24,  y: 110, name: 'Mar Ligure',    rot: -72 },
+      { x: 74,  y: 180, name: 'Mar Tirreno',   rot: 18  },
+      { x: 178, y: 130, name: 'Mar Adriatico', rot: 72  },
+      { x: 150, y: 228, name: 'Mar Ionio',     rot: 0   },
+    ],
+  },
+
+  uk: {
+    name: 'UNITED KINGDOM',
+    subtitle: 'Great Britain & N. Ireland',
+    viewBox: '0 0 200 240',
+    path: 'M96 30 L112 28 L118 42 L124 54 L118 66 L130 74 L140 82 L146 96 L142 108 L150 118 L148 130 L156 140 L150 154 L158 166 L150 178 L138 176 L128 188 L116 192 L104 186 L96 178 L88 172 L82 160 L88 152 L82 142 L74 130 L80 122 L72 112 L76 100 L84 90 L78 78 L84 64 L78 52 L86 40 Z',
+    extras: [
+      { type: 'island', path: 'M30 130 L46 122 L58 132 L62 148 L54 164 L40 168 L28 158 L22 144 Z', label: 'IRE' },
+      { type: 'island', path: 'M108 12 L124 16 L122 26 L110 24 Z' },
+    ],
+    bordering: [],
+    cities: [
+      { x: 118, y: 170, name: 'LONDON',     capital: true },
+      { x: 100, y: 118, name: 'MANCHESTER', dot: true },
+      { x: 96,  y: 80,  name: 'EDINBURGH',  dot: true },
+      { x: 80,  y: 164, name: 'CARDIFF',    dot: true },
+      { x: 52,  y: 150, name: 'DUBLIN',     dot: true },
+    ],
+    seas: [
+      { x: 28,  y: 80,  name: 'Atlantic Ocean',   rot: -78 },
+      { x: 172, y: 88,  name: 'North Sea',        rot: 78  },
+      { x: 20,  y: 196, name: 'Celtic Sea',       rot: -30 },
+      { x: 68,  y: 112, name: 'Irish Sea',        rot: 0   },
+      { x: 178, y: 200, name: 'English Channel',  rot: 0   },
+    ],
+  },
+
+  france: {
+    name: 'FRANCE',
+    subtitle: 'République française',
+    viewBox: '0 0 200 240',
+    path: 'M40 70 L62 54 L78 48 L96 42 L112 44 L126 40 L138 50 L150 58 L158 72 L162 88 L170 96 L168 112 L160 122 L162 138 L156 150 L150 160 L152 172 L144 182 L132 188 L120 186 L112 194 L98 192 L84 184 L70 176 L60 162 L50 152 L42 140 L34 122 L30 106 L32 90 Z',
+    extras: [
+      { type: 'island', path: 'M160 176 L170 174 L174 186 L168 198 L160 196 L156 186 Z' },
+    ],
+    bordering: [
+      { label: 'BE', path: 'M100 10 L160 14 L150 40 L110 38 Z' },
+      { label: 'DE', path: 'M160 14 L190 32 L172 58 L152 44 Z' },
+      { label: 'ES', path: 'M20 180 L80 184 L60 220 L10 214 Z' },
+    ],
+    cities: [
+      { x: 112, y: 80,  name: 'PARIS',     capital: true },
+      { x: 66,  y: 142, name: 'BORDEAUX',  dot: true },
+      { x: 146, y: 156, name: 'LYON',      dot: true },
+      { x: 134, y: 186, name: 'MARSEILLE', dot: true },
+      { x: 52,  y: 100, name: 'NANTES',    dot: true },
+    ],
+    seas: [
+      { x: 22,  y: 96,  name: 'Bay of Biscay',    rot: -68 },
+      { x: 178, y: 160, name: 'Mediterranean Sea', rot: 62  },
+      { x: 90,  y: 20,  name: 'English Channel',   rot: 0   },
+    ],
+  },
+
+  greenland: {
+    name: 'GREENLAND',
+    subtitle: 'Kalaallit Nunaat',
+    viewBox: '0 0 200 240',
+    path: 'M68 30 L108 22 L142 36 L158 58 L168 82 L170 108 L164 132 L150 152 L138 170 L130 188 L118 200 L102 208 L84 202 L70 190 L58 174 L48 156 L42 136 L38 112 L40 90 L48 66 L58 46 Z',
+    extras: [],
+    bordering: [],
+    cities: [
+      { x: 80, y: 186, name: 'NUUK', capital: true },
+    ],
+    seas: [
+      { x: 18,  y: 100, name: 'Davis Strait',  rot: -80 },
+      { x: 182, y: 100, name: 'Greenland Sea', rot: 80  },
+      { x: 100, y: 224, name: 'Labrador Sea',  rot: 0   },
+    ],
+  },
+
+  japan: {
+    name: 'JAPAN',
+    subtitle: '日本 — East Asia',
+    viewBox: '0 0 200 240',
+    path: 'M142 32 L158 44 L152 58 L140 62 L128 70 L132 82 L124 90 L116 102 L108 114 L96 122 L86 130 L80 142 L84 154 L74 162 L62 166 L52 160 L48 148 L56 140 L68 130 L78 118 L88 108 L96 96 L102 84 L110 74 L116 62 L124 52 L132 42 Z',
+    extras: [
+      { type: 'island', path: 'M34 186 L 52 180 L 58 192 L 46 202 L 32 198 Z' },
+      { type: 'island', path: 'M16 218 L 30 214 L 26 226 L 14 228 Z' },
+    ],
+    bordering: [],
+    cities: [
+      { x: 100, y: 96,  name: 'TOKYO',  capital: true },
+      { x: 72,  y: 146, name: 'OSAKA',  dot: true },
+      { x: 130, y: 52,  name: 'SENDAI', dot: true },
+    ],
+    seas: [
+      { x: 28,  y: 60,  name: 'Sea of Japan', rot: -72 },
+      { x: 180, y: 140, name: 'Pacific Ocean', rot: 78  },
+    ],
+  },
+
+  madagascar: {
+    name: 'MADAGASCAR',
+    subtitle: 'Madagasikara',
+    viewBox: '0 0 200 240',
+    path: 'M88 28 L104 32 L114 46 L118 62 L114 78 L118 96 L114 114 L118 132 L114 150 L108 168 L104 186 L96 200 L86 210 L74 206 L70 192 L76 176 L80 158 L76 142 L80 124 L76 106 L78 88 L74 72 L78 56 L82 40 Z',
+    extras: [],
+    bordering: [],
+    cities: [
+      { x: 96,  y: 124, name: 'ANTANANARIVO', capital: true },
+      { x: 108, y: 74,  name: 'MAHAJANGA',    dot: true },
+    ],
+    seas: [
+      { x: 26,  y: 120, name: 'Mozambique Channel', rot: -78 },
+      { x: 178, y: 130, name: 'Indian Ocean',       rot: 80  },
+    ],
+  },
+};
+
+// ─── shared.jsx ─────────────────────────────────────────────────────────────
+
+function PhotoBG({ variant = 'wall', children }) {
+  const variants = {
+    wall: {
+      background: `
+        radial-gradient(ellipse 180px 140px at 58% 52%, #6a4a3a 0%, #4a3326 35%, #2e1e13 70%),
+        radial-gradient(ellipse 400px 600px at 30% 30%, #b89878 0%, #8a6a50 50%, #5a4030 100%)`,
+    },
+    plate: {
+      background: `
+        radial-gradient(ellipse 200px 180px at 45% 55%, #2a1a12 0%, #3a2418 30%, #6b4a30 70%, #8a6a4a 100%),
+        linear-gradient(135deg, #d9cbb4 0%, #bca988 100%)`,
+    },
+    moss: {
+      background: `
+        radial-gradient(ellipse 180px 160px at 50% 50%, #4a5a2a 0%, #2a3a18 40%, #6a7a4a 80%),
+        linear-gradient(180deg, #2a3320 0%, #4a5a3a 100%)`,
+    },
+    cloud: {
+      background: `
+        radial-gradient(ellipse 220px 160px at 50% 48%, #f0ede5 0%, #cdc8bc 50%, #9aa0aa 100%),
+        linear-gradient(180deg, #6a88a8 0%, #aec4d8 100%)`,
+    },
+  };
+  return (
+    <div style={{ position: 'absolute', inset: 0, ...variants[variant], overflow: 'hidden' }}>
+      <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0.25, mixBlendMode: 'overlay' }}>
+        <filter id="ng">
+          <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" />
+          <feColorMatrix values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.8 0" />
+        </filter>
+        <rect width="100%" height="100%" filter="url(#ng)" />
+      </svg>
+      {children}
+    </div>
+  );
+}
+
+function Logo({ size = 22 }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+        <circle cx="12" cy="12" r="10" stroke="#002FA7" strokeWidth="1.6"/>
+        <ellipse cx="12" cy="12" rx="4" ry="10" stroke="#002FA7" strokeWidth="1" opacity="0.6"/>
+        <line x1="2" y1="12" x2="22" y2="12" stroke="#002FA7" strokeWidth="1" opacity="0.6"/>
+        <circle cx="12" cy="12" r="2" fill="#002FA7"/>
+      </svg>
+      <span style={{ fontFamily: 'var(--sans)', fontWeight: 600, letterSpacing: '-0.02em', fontSize: 15, color: '#0A0A0A' }}>
+        Pareido<span style={{ color: '#002FA7' }}>Map</span>
+      </span>
+    </div>
+  );
+}
+
+function AppBar({ title, left, right, subtitle }) {
+  return (
+    <div style={{
+      paddingTop: 50, paddingLeft: 18, paddingRight: 18, paddingBottom: 14,
+      borderBottom: '1px solid var(--border)',
+      background: 'var(--bg)',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, minHeight: 38 }}>
+        {left || <div style={{ width: 38 }} />}
+        <div style={{ flex: 1, textAlign: 'center' }}>
+          <div style={{ fontSize: 14, fontWeight: 600, letterSpacing: '-0.01em' }}>{title}</div>
+          {subtitle && <div style={{ fontFamily: 'var(--mono)', fontSize: 9.5, color: 'var(--muted-fg)', marginTop: 2, letterSpacing: '0.06em' }}>{subtitle}</div>}
+        </div>
+        {right || <div style={{ width: 38 }} />}
+      </div>
+    </div>
+  );
+}
+
+function BackBtn({ onClick }) {
+  return (
+    <button className="btn-icon" onClick={onClick}>
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+        <path d="M13 7H1M5 3L1 7l4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+      </svg>
+    </button>
+  );
+}
+
+function CloseBtn({ onClick }) {
+  return (
+    <button className="btn-icon" onClick={onClick}>
+      <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
+        <path d="M2 2l10 10M12 2L2 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+      </svg>
+    </button>
+  );
+}
+
+// ─── clippy.jsx ──────────────────────────────────────────────────────────────
+
+function ClippyGlobe({ size = 160, mood = 'searching' }) {
+  return (
+    <div style={{
+      width: size, height: size,
+      position: 'relative',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+    }}>
+      <style>{`
+        @keyframes mascot-bounce {
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(-5px); }
+        }
+        @keyframes mascot-glass {
+          0%   { transform: translate(0,0) rotate(-6deg); }
+          25%  { transform: translate(-7px,-3px) rotate(-12deg); }
+          50%  { transform: translate(5px,2px) rotate(2deg); }
+          75%  { transform: translate(-2px,4px) rotate(-8deg); }
+          100% { transform: translate(0,0) rotate(-6deg); }
+        }
+        @keyframes mascot-blink {
+          0%,92%,100% { transform: scaleY(1); }
+          95% { transform: scaleY(0.1); }
+        }
+        .mascot-body { animation: mascot-bounce 2.4s ease-in-out infinite; }
+        .mascot-glass { animation: mascot-glass 5s ease-in-out infinite; transform-origin: 50px 50px; }
+        .mascot-eye { animation: mascot-blink 4s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+      `}</style>
+
+      <svg width={size} height={size} viewBox="0 0 200 200" fill="none">
+        <defs>
+          <filter id="mascot-wob">
+            <feTurbulence baseFrequency="0.02" numOctaves="2" seed="2" />
+            <feDisplacementMap in="SourceGraphic" scale="1.2" />
+          </filter>
+        </defs>
+
+        <ellipse cx="100" cy="178" rx="36" ry="3.5" fill="#0A0A0A" opacity="0.12" />
+
+        <g className="mascot-body" filter="url(#mascot-wob)">
+          <circle cx="100" cy="100" r="56" fill="#fff" stroke="#0A0A0A" strokeWidth="1.4" />
+          <ellipse cx="100" cy="100" rx="56" ry="22" stroke="#002FA7" strokeWidth="0.9" fill="none" opacity="0.5" />
+          <ellipse cx="100" cy="100" rx="22" ry="56" stroke="#002FA7" strokeWidth="0.9" fill="none" opacity="0.5" />
+          <ellipse cx="100" cy="100" rx="42" ry="56" stroke="#002FA7" strokeWidth="0.7" fill="none" opacity="0.35" />
+          <line x1="44" y1="100" x2="156" y2="100" stroke="#002FA7" strokeWidth="0.9" opacity="0.6" />
+          <path d="M70 80 Q 76 72 84 76 Q 92 70 96 82 Q 92 92 84 90 Q 76 92 70 80 Z" fill="#002FA7" opacity="0.85" />
+          <path d="M118 96 Q 126 92 132 100 Q 138 108 132 116 Q 124 120 118 112 Z" fill="#002FA7" opacity="0.85" />
+          <path d="M82 124 Q 88 118 96 122 Q 102 128 98 134 Q 90 138 82 132 Z" fill="#002FA7" opacity="0.85" />
+          <circle className="mascot-eye" cx="84" cy="94" r="3" fill="#0A0A0A" />
+          <circle className="mascot-eye" cx="116" cy="94" r="3" fill="#0A0A0A" />
+          {mood === 'searching' && <path d="M92 110 Q 100 114 108 110" stroke="#0A0A0A" strokeWidth="1.3" strokeLinecap="round" fill="none" />}
+          {mood === 'thinking'  && <path d="M92 112 L 108 112" stroke="#0A0A0A" strokeWidth="1.3" strokeLinecap="round" />}
+          {mood === 'found'     && <path d="M90 108 Q 100 118 110 108" stroke="#0A0A0A" strokeWidth="1.5" strokeLinecap="round" fill="none" />}
+        </g>
+
+        <g className="mascot-glass">
+          <circle cx="142" cy="62" r="17" fill="#fff" fillOpacity="0.4" stroke="#0A0A0A" strokeWidth="1.4" />
+          <line x1="154" y1="74" x2="170" y2="90" stroke="#0A0A0A" strokeWidth="3" strokeLinecap="round" />
+          <line x1="154" y1="74" x2="170" y2="90" stroke="#fff" strokeWidth="1.2" strokeLinecap="round" />
+        </g>
+      </svg>
+    </div>
+  );
+}
+
+// ─── map-overlay.jsx ─────────────────────────────────────────────────────────
+
+function textCenter(d) {
+  const coords = d.match(/-?\d+(\.\d+)?/g) || [];
+  const xs = [], ys = [];
+  for (let i = 0; i < coords.length; i += 2) {
+    xs.push(parseFloat(coords[i]));
+    ys.push(parseFloat(coords[i + 1]));
+  }
+  return {
+    x: xs.reduce((a, b) => a + b, 0) / xs.length,
+    y: ys.reduce((a, b) => a + b, 0) / ys.length,
+  };
+}
+
+function MapOverlay({
+  region,
+  borderColor = '#002FA7',
+  subBorderColor = '#737373',
+  showBorder = true,
+  showCities = true,
+  showSeas = true,
+  showBordering = true,
+  fontFace = 'sans',
+  fillTint = false,
+}) {
+  const R = REGIONS[region];
+  if (!R) return null;
+
+  const font = {
+    sans:  'var(--sans)',
+    serif: 'var(--serif)',
+    mono:  'var(--mono)',
+    hand:  'var(--hand)',
+  }[fontFace] || 'var(--sans)';
+
+  return (
+    <svg
+      viewBox={R.viewBox}
+      style={{
+        position: 'absolute', inset: 0,
+        width: '100%', height: '100%',
+        pointerEvents: 'none',
+        overflow: 'visible',
+      }}
+    >
+      <defs>
+        <filter id={`wob-${region}`}>
+          <feTurbulence baseFrequency="0.015" numOctaves="2" seed="3" />
+          <feDisplacementMap in="SourceGraphic" scale="1.4" />
+        </filter>
+      </defs>
+
+      {showBordering && R.bordering && R.bordering.map((b, i) => (
+        <g key={i} opacity="0.7">
+          <path d={b.path} fill="none" stroke={subBorderColor}
+            strokeWidth="0.6" strokeDasharray="1.5 2" strokeLinejoin="round" />
+          <text x={textCenter(b.path).x} y={textCenter(b.path).y}
+            fontSize="5" fill={subBorderColor}
+            fontFamily="var(--mono)" textAnchor="middle"
+            letterSpacing="0.5">
+            {b.label}
+          </text>
+        </g>
+      ))}
+
+      {R.extras && R.extras.map((ex, i) => (
+        showBorder && (
+          <g key={i} filter={`url(#wob-${region})`}>
+            {fillTint && <path d={ex.path} fill={borderColor} fillOpacity="0.06" />}
+            <path d={ex.path} fill="none" stroke={borderColor}
+              strokeWidth="1.2" strokeLinejoin="round" strokeLinecap="round" />
+          </g>
+        )
+      ))}
+
+      {showBorder && (
+        <g filter={`url(#wob-${region})`}>
+          {fillTint && <path d={R.path} fill={borderColor} fillOpacity="0.06" />}
+          <path d={R.path} fill="none" stroke={borderColor}
+            strokeWidth="2.6" strokeOpacity="0.12" strokeLinejoin="round" />
+          <path d={R.path} fill="none" stroke={borderColor}
+            strokeWidth="1.4" strokeLinejoin="round" strokeLinecap="round" />
+        </g>
+      )}
+
+      {showCities && R.cities.map((c, i) => (
+        <g key={i}>
+          {c.capital ? (
+            <>
+              <circle cx={c.x} cy={c.y} r={3.2} fill="none" stroke={borderColor} strokeWidth="0.7" />
+              <circle cx={c.x} cy={c.y} r={1.4} fill={borderColor} />
+            </>
+          ) : (
+            <circle cx={c.x} cy={c.y} r={1.1} fill={borderColor} />
+          )}
+          <text
+            x={c.x + 5} y={c.y + 1.6}
+            fontSize="5"
+            fill={borderColor}
+            fontFamily="var(--mono)"
+            letterSpacing="0.4"
+            fontWeight={c.capital ? 700 : 400}
+          >
+            {c.name}
+          </text>
+        </g>
+      ))}
+
+      {showSeas && R.seas.map((s, i) => (
+        <text
+          key={i}
+          x={s.x} y={s.y}
+          fontSize={fontFace === 'hand' ? 10 : 6}
+          fill={subBorderColor}
+          fontFamily={font}
+          fontStyle={fontFace === 'serif' ? 'italic' : 'normal'}
+          textAnchor="middle"
+          letterSpacing={fontFace === 'hand' ? 0 : 1.2}
+          transform={`rotate(${s.rot || 0} ${s.x} ${s.y})`}
+          opacity="0.8"
+        >
+          {fontFace === 'hand' ? s.name : s.name.toUpperCase().split('').join(' ')}
+        </text>
+      ))}
+    </svg>
+  );
+}
+
+// ─── screen-onboarding.jsx ───────────────────────────────────────────────────
+
+function ScreenOnboarding({ onStart }) {
+  return (
+    <div className="screen" style={{ padding: '0' }}>
+      <div style={{ paddingTop: 50, paddingLeft: 18, display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingRight: 18 }}>
+        <Logo />
+        <span className="kbd">v0.1 · beta</span>
+      </div>
+
+      <div style={{ display: 'flex', justifyContent: 'center', marginTop: 36, padding: '0 24px' }}>
+        <div style={{
+          width: '100%', aspectRatio: '4/3',
+          borderRadius: 'var(--r-lg)',
+          border: '1px solid var(--border)',
+          background: 'var(--bg-2)',
+          position: 'relative', overflow: 'hidden',
+        }}>
+          <svg width="100%" height="100%" viewBox="0 0 240 180" preserveAspectRatio="xMidYMid slice">
+            <ellipse cx="118" cy="92" rx="58" ry="48" fill="#6b4a30" opacity="0.18"/>
+            <path d="M70 90 Q 78 60 108 56 Q 138 52 154 70 Q 168 84 158 100 Q 168 120 154 134 Q 134 144 118 132 Q 92 134 80 122 Q 60 110 70 90 Z"
+              fill="#0A0A0A" opacity="0.85" />
+            <g transform="translate(118 70) scale(0.4)">
+              <path d={REGIONS.italy.path} fill="none" stroke="#002FA7" strokeWidth="3" strokeLinejoin="round"/>
+            </g>
+            <path d="M180 38 Q 168 50 152 60" stroke="#002FA7" strokeWidth="1.6" fill="none" strokeLinecap="round"/>
+            <path d="M156 56 L 152 60 L 158 64" stroke="#002FA7" strokeWidth="1.6" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+            <text x="184" y="34" fontFamily="var(--hand)" fontSize="18" fill="#002FA7" fontWeight="600">it's italy!</text>
+          </svg>
+        </div>
+      </div>
+
+      <div style={{ textAlign: 'center', padding: '32px 28px 0' }}>
+        <h1 style={{
+          fontSize: 28, lineHeight: 1.1, margin: 0,
+          fontWeight: 600, letterSpacing: '-0.02em',
+        }}>
+          See <span className="hand-circle">countries</span>
+          <br />in everything.
+        </h1>
+        <p style={{
+          fontSize: 14, lineHeight: 1.55, color: 'var(--muted-fg)',
+          margin: '18px auto 0', maxWidth: 280, textWrap: 'pretty',
+        }}>
+          A stain on the wall. A crumb on a plate. A cloud at dusk.
+          Snap it — we'll find the country it's pretending to be.
+        </p>
+      </div>
+
+      <div style={{ padding: '24px 24px 0' }}>
+        <div className="card" style={{ padding: 4 }}>
+          {[
+            { n: 1, t: 'Snap',  d: 'A photo of any pattern' },
+            { n: 2, t: 'Trace', d: 'Tap to outline the shape' },
+            { n: 3, t: 'Match', d: 'We find the closest country' },
+          ].map((s, i, a) => (
+            <div key={s.n} style={{
+              display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px',
+              borderBottom: i < a.length - 1 ? '1px solid var(--border)' : 'none',
+            }}>
+              <div style={{
+                width: 26, height: 26, borderRadius: 999,
+                background: 'var(--accent-soft)', color: 'var(--accent)',
+                fontFamily: 'var(--mono)', fontSize: 12, fontWeight: 500,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>{s.n}</div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 14, fontWeight: 500 }}>{s.t}</div>
+                <div style={{ fontSize: 12, color: 'var(--muted-fg)' }}>{s.d}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', padding: '0 24px 30px' }}>
+        <button className="btn btn-primary" onClick={onStart} style={{ width: '100%' }}>
+          Start hunting
+          <svg width="14" height="10" viewBox="0 0 14 10" fill="none">
+            <path d="M1 5h12M9 1l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </button>
+        <button className="btn btn-ghost" style={{ marginTop: 6, color: 'var(--muted-fg)' }}>
+          Sign in
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ─── screen-camera.jsx ───────────────────────────────────────────────────────
+
+function ScreenCamera({ onCapture, onBack, photo = 'wall' }) {
+  return (
+    <div className="screen" style={{ background: 'var(--bg)' }}>
+      <AppBar title="Frame your pattern" subtitle="STEP 02 · CAPTURE"
+        left={<BackBtn onClick={onBack} />}
+        right={<button className="btn-icon"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M1 4h12M3 4v8a1 1 0 001 1h6a1 1 0 001-1V4M5 4V2h4v2" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg></button>}
+      />
+
+      <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
+        <PhotoBG variant={photo} />
+
+        <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <svg width="240" height="240" viewBox="0 0 240 240" fill="none">
+            <circle cx="120" cy="120" r="110" stroke="#fff" strokeWidth="1.4"
+              strokeDasharray="4 8" className="dash-ring"
+              strokeOpacity="0.85" />
+            {[[12,12,1,1],[228,12,-1,1],[12,228,1,-1],[228,228,-1,-1]].map(([x,y,sx,sy],i) => (
+              <g key={i} stroke="#fff" strokeWidth="1.4" strokeLinecap="round">
+                <line x1={x} y1={y} x2={x+14*sx} y2={y}/>
+                <line x1={x} y1={y} x2={x} y2={y+14*sy}/>
+              </g>
+            ))}
+            <line x1="120" y1="113" x2="120" y2="127" stroke="#fff" strokeWidth="1"/>
+            <line x1="113" y1="120" x2="127" y2="120" stroke="#fff" strokeWidth="1"/>
+          </svg>
+        </div>
+
+        <div style={{
+          position: 'absolute', top: 16, right: 18,
+          textAlign: 'right',
+        }}>
+          <div className="hand-script" style={{ color: '#fff', fontSize: 26, transform: 'rotate(-4deg)' }}>
+            line it up!
+          </div>
+          <svg width="60" height="40" viewBox="0 0 60 40" style={{ marginRight: 6 }}>
+            <path d="M50 4 Q 30 18 18 36" stroke="#fff" strokeWidth="1.6" fill="none" strokeLinecap="round"/>
+            <path d="M22 32 L 18 36 L 24 38" stroke="#fff" strokeWidth="1.6" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </div>
+      </div>
+
+      <div style={{
+        background: 'var(--bg)', padding: '18px 24px 26px',
+        borderTop: '1px solid var(--border)',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <button className="btn-icon" style={{ width: 44, height: 44, padding: 0, overflow: 'hidden' }}>
+            <div style={{
+              width: '100%', height: '100%',
+              background: 'linear-gradient(135deg, #a48b6a, #6b5640)',
+            }}/>
+          </button>
+
+          <button onClick={onCapture} style={{
+            width: 70, height: 70, borderRadius: 999,
+            background: 'transparent',
+            border: '2px solid var(--fg)',
+            padding: 5, cursor: 'pointer',
+          }}>
+            <div style={{ width: '100%', height: '100%', borderRadius: 999, background: 'var(--accent)' }}/>
+          </button>
+
+          <div className="seg" style={{ flexDirection: 'column', padding: 2, gap: 0 }}>
+            <button className="active" style={{ padding: '4px 10px', fontSize: 10 }}>PHOTO</button>
+            <button style={{ padding: '4px 10px', fontSize: 10 }}>LIBRARY</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── screen-segment.jsx ──────────────────────────────────────────────────────
+
+function ScreenSegment({ onBack, onConfirm, variant = 'wall' }) {
+  const [pts, setPts] = React.useState([{ x: 52, y: 48, kind: 'add' }]);
+  const add = (kind) => {
+    const x = 36 + Math.random() * 36;
+    const y = 36 + Math.random() * 36;
+    setPts(p => [...p, { x, y, kind }]);
+  };
+
+  const maskPath = 'M 30 38 Q 22 28 34 20 Q 46 12 58 16 Q 70 12 78 22 Q 88 20 92 32 Q 96 44 92 54 Q 96 66 88 74 Q 78 82 66 80 Q 54 84 44 78 Q 32 74 28 62 Q 20 52 30 38 Z';
+
+  return (
+    <div className="screen">
+      <AppBar title="Trace the shape" subtitle="STEP 03 · SEGMENT"
+        left={<BackBtn onClick={onBack} />}
+        right={<button className="btn-icon" onClick={() => setPts([])}>
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+            <path d="M2 4h10M5 4V2.5h4V4M3.5 4l.5 8h6l.5-8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </button>}
+      />
+
+      <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
+        <PhotoBG variant={variant} />
+
+        <svg viewBox="0 0 120 120" preserveAspectRatio="xMidYMid slice"
+          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none' }}>
+          <defs>
+            <mask id="seg-mask">
+              <rect width="120" height="120" fill="white"/>
+              <path d={maskPath} fill="black"/>
+            </mask>
+          </defs>
+          <rect width="120" height="120" fill="rgba(0,0,0,0.45)" mask="url(#seg-mask)"/>
+          <path d={maskPath} fill="#002FA7" fillOpacity="0.22"/>
+          <path d={maskPath} fill="none" stroke="#002FA7" strokeWidth="0.7"
+            style={{ filter: 'drop-shadow(0 0 2px rgba(0,47,167,0.7))' }} />
+          <path d={maskPath} fill="none" stroke="#fff" strokeWidth="0.35"/>
+
+          {pts.map((p, i) => (
+            <g key={i}>
+              <circle cx={p.x} cy={p.y} r="2.6"
+                fill={p.kind === 'add' ? '#002FA7' : '#fff'}
+                stroke="#fff" strokeWidth="0.6"/>
+              <text x={p.x} y={p.y + 1.2} textAnchor="middle"
+                fontSize="3.4" fontWeight="700"
+                fill={p.kind === 'add' ? '#fff' : '#002FA7'}>
+                {p.kind === 'add' ? '+' : '−'}
+              </text>
+            </g>
+          ))}
+        </svg>
+
+        <div style={{
+          position: 'absolute', top: 12, left: 14, right: 14,
+          background: 'rgba(255,255,255,0.94)',
+          backdropFilter: 'blur(8px)',
+          border: '1px solid var(--border)',
+          borderRadius: 'var(--r)', padding: '8px 12px',
+          fontSize: 12, lineHeight: 1.4,
+          display: 'flex', alignItems: 'center', gap: 10,
+        }}>
+          <div style={{ width: 8, height: 8, borderRadius: 999, background: 'var(--accent)' }}/>
+          <span>Tap to add · long-press to subtract</span>
+        </div>
+      </div>
+
+      <div style={{ padding: '14px 18px 24px', background: 'var(--bg)', borderTop: '1px solid var(--border)' }}>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <button className="btn btn-outline" style={{ flex: 1 }} onClick={() => add('sub')}>
+            <span style={{ color: 'var(--accent)', fontWeight: 600 }}>−</span> Subtract
+          </button>
+          <button className="btn btn-outline" style={{ flex: 1 }} onClick={() => add('add')}>
+            <span style={{ color: 'var(--accent)', fontWeight: 600 }}>+</span> Add
+          </button>
+        </div>
+        <button className="btn btn-primary" style={{ width: '100%', marginTop: 8 }} onClick={onConfirm}>
+          Match this shape
+          <svg width="14" height="10" viewBox="0 0 14 10" fill="none">
+            <path d="M1 5h12M9 1l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ─── screen-loading.jsx ──────────────────────────────────────────────────────
+
+function ScreenLoading() {
+  const lines = [
+    'Flipping through the atlas…',
+    'Asking the cartographers…',
+    'Rotating candidate shapes…',
+    'Measuring coastlines (Mandelbrot sighs)…',
+    'Consulting a 1783 nautical chart…',
+    "Checking if it's maybe just Italy again…",
+  ];
+  const [idx, setIdx] = React.useState(0);
+  React.useEffect(() => {
+    const t = setInterval(() => setIdx(i => (i + 1) % lines.length), 1800);
+    return () => clearInterval(t);
+  }, []);
+
+  return (
+    <div className="screen">
+      <AppBar title="Searching" subtitle="STEP 04 · MATCHING" />
+
+      <div style={{
+        flex: 1, display: 'flex', flexDirection: 'column',
+        alignItems: 'center', justifyContent: 'center',
+        padding: '0 24px', gap: 28,
+      }}>
+        <div style={{ position: 'relative', width: 240, height: 240 }}>
+          <svg viewBox="0 0 240 240" style={{ position: 'absolute', inset: 0 }}>
+            <circle cx="120" cy="120" r="110" fill="none"
+              stroke="var(--border)" strokeWidth="1" strokeDasharray="2 4"/>
+            <circle cx="120" cy="120" r="86" fill="none"
+              stroke="var(--border)" strokeWidth="1" strokeDasharray="1 3"/>
+            <g className="spin-slow" style={{ transformOrigin: '120px 120px' }}>
+              {['IT','FR','UK','JP','MG','GL','ES','CN'].map((code, i) => {
+                const a = (i / 8) * Math.PI * 2;
+                const x = 120 + Math.cos(a) * 110;
+                const y = 120 + Math.sin(a) * 110;
+                const featured = code === 'IT';
+                return (
+                  <g key={code} transform={`translate(${x} ${y})`}>
+                    <circle r="11" fill={featured ? '#002FA7' : '#fff'} stroke={featured ? '#002FA7' : 'var(--border)'} strokeWidth="1"/>
+                    <text textAnchor="middle" y="2.8" fontSize="8.5"
+                      fontFamily="var(--mono)" fontWeight="500"
+                      fill={featured ? '#fff' : '#0A0A0A'}>{code}</text>
+                  </g>
+                );
+              })}
+            </g>
+          </svg>
+
+          <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <ClippyGlobe size={140} mood="searching"/>
+          </div>
+        </div>
+
+        <div style={{ textAlign: 'center', minHeight: 60 }}>
+          <div className="label" style={{ marginBottom: 8 }}>Shape · received</div>
+          <div key={idx} style={{
+            fontFamily: 'var(--serif)', fontStyle: 'italic',
+            fontSize: 20, lineHeight: 1.25, color: 'var(--fg)',
+            maxWidth: 280,
+          }}>
+            {lines[idx]}
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', gap: 6 }}>
+          {[0,1,2].map(i => (
+            <div key={i} style={{
+              width: 6, height: 6, borderRadius: 999, background: 'var(--accent)',
+              animation: `dotpulse 1.2s ease-in-out ${i * 0.2}s infinite`,
+            }}/>
+          ))}
+        </div>
+      </div>
+
+      <div style={{ padding: '14px 18px 22px', textAlign: 'center' }}>
+        <span className="kbd">194 candidates · ±12° rotations</span>
+      </div>
+    </div>
+  );
+}
+
+// ─── screen-result.jsx ───────────────────────────────────────────────────────
+
+function ScreenResult({ onBack, onStyle, photo = 'wall' }) {
+  const candidates = [
+    { region: 'italy',      score: 94 },
+    { region: 'madagascar', score: 71 },
+    { region: 'uk',         score: 58 },
+  ];
+  const [idx, setIdx] = React.useState(0);
+  const c = candidates[idx];
+  const R = REGIONS[c.region];
+
+  return (
+    <div className="screen">
+      <AppBar title="Best match" subtitle={`${idx + 1} of ${candidates.length} candidates`}
+        left={<BackBtn onClick={onBack}/>}
+        right={<button className="btn-icon">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+            <circle cx="3" cy="7" r="1.2" fill="currentColor"/>
+            <circle cx="7" cy="7" r="1.2" fill="currentColor"/>
+            <circle cx="11" cy="7" r="1.2" fill="currentColor"/>
+          </svg>
+        </button>}
+      />
+
+      <div style={{
+        margin: '14px 18px 0',
+        borderRadius: 'var(--r-lg)',
+        overflow: 'hidden',
+        position: 'relative',
+        aspectRatio: '4/5',
+        border: '1px solid var(--border)',
+      }}>
+        <PhotoBG variant={photo}/>
+        <div style={{ position: 'absolute', inset: 0 }}>
+          <MapOverlay
+            key={c.region}
+            region={c.region}
+            borderColor="#fff"
+            subBorderColor="rgba(255,255,255,0.85)"
+            showBordering={false}
+          />
+        </div>
+        <div style={{
+          position: 'absolute', top: 10, left: 10,
+          fontFamily: 'var(--mono)', fontSize: 9, letterSpacing: '0.12em',
+          color: '#fff', textTransform: 'uppercase',
+          background: 'rgba(0,0,0,0.4)', padding: '4px 7px', borderRadius: 4,
+        }}>
+          PAREIDOMAP
+        </div>
+      </div>
+
+      <div style={{ padding: '14px 18px 0' }}>
+        <div className="card" style={{ padding: 14 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 10 }}>
+            <div>
+              <div className="label" style={{ marginBottom: 4 }}>identified as</div>
+              <div style={{ fontSize: 22, fontWeight: 600, letterSpacing: '-0.01em', lineHeight: 1 }}>
+                {R.name.charAt(0) + R.name.slice(1).toLowerCase()}
+              </div>
+              <div style={{ fontSize: 12, color: 'var(--muted-fg)', marginTop: 4 }}>
+                {R.subtitle}
+              </div>
+            </div>
+            <div style={{ textAlign: 'right' }}>
+              <div className="label">score</div>
+              <div style={{ fontSize: 22, fontWeight: 600, color: 'var(--accent)', lineHeight: 1, marginTop: 2 }}>
+                {c.score}<span style={{ fontSize: 12, color: 'var(--muted-fg)', fontWeight: 400 }}>%</span>
+              </div>
+            </div>
+          </div>
+
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 8,
+            paddingTop: 10, borderTop: '1px solid var(--border)',
+          }}>
+            <button className="btn-icon" onClick={() => setIdx((idx - 1 + candidates.length) % candidates.length)} style={{ width: 32, height: 32 }}>
+              <svg width="11" height="11" viewBox="0 0 14 14" fill="none">
+                <path d="M9 1L3 7l6 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </button>
+            <div style={{ flex: 1, display: 'flex', justifyContent: 'center', gap: 5 }}>
+              {candidates.map((_, i) => (
+                <button key={i} onClick={() => setIdx(i)} style={{
+                  background: i === idx ? 'var(--accent)' : 'var(--border-2)',
+                  border: 'none',
+                  width: i === idx ? 18 : 6, height: 6, borderRadius: 999,
+                  cursor: 'pointer', padding: 0, transition: 'all .2s ease',
+                }}/>
+              ))}
+            </div>
+            <button className="btn-icon" onClick={() => setIdx((idx + 1) % candidates.length)} style={{ width: 32, height: 32 }}>
+              <svg width="11" height="11" viewBox="0 0 14 14" fill="none">
+                <path d="M5 1l6 6-6 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div style={{ padding: '12px 18px 22px', display: 'flex', gap: 8 }}>
+        <button className="btn btn-outline" style={{ flex: 1 }}>Retake</button>
+        <button className="btn btn-primary" style={{ flex: 1.6 }} onClick={() => onStyle(c.region)}>
+          Style this
+          <svg width="14" height="10" viewBox="0 0 14 10" fill="none">
+            <path d="M1 5h12M9 1l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ─── screen-style.jsx ────────────────────────────────────────────────────────
+
+function Section({ label, children }) {
+  return (
+    <div style={{ padding: '14px 0', borderBottom: '1px solid var(--border)' }}>
+      <div className="label" style={{ marginBottom: 10 }}>{label}</div>
+      {children}
+    </div>
+  );
+}
+
+function Toggle({ label, hint, on, onChange }) {
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 12,
+      padding: '12px 0',
+      borderBottom: '1px solid var(--border)',
+    }}>
+      <div style={{ flex: 1 }}>
+        <div style={{ fontSize: 14, fontWeight: 500 }}>{label}</div>
+        <div style={{ fontSize: 12, color: 'var(--muted-fg)', marginTop: 2 }}>{hint}</div>
+      </div>
+      <button className={'switch' + (on ? ' on' : '')} onClick={() => onChange(!on)}/>
+    </div>
+  );
+}
+
+function ScreenStyle({ region = 'italy', onBack, onShare, photo = 'wall' }) {
+  const [opts, setOpts] = React.useState({
+    borderColor: '#FFFFFF',
+    subBorderColor: 'rgba(255,255,255,0.8)',
+    showBorder: true,
+    showCities: true,
+    showSeas: true,
+    showBordering: true,
+    fontFace: 'sans',
+  });
+
+  const palettes = [
+    { main: '#FFFFFF', sub: 'rgba(255,255,255,0.8)' },
+    { main: '#0A0A0A', sub: 'rgba(10,10,10,0.6)' },
+    { main: '#002FA7', sub: 'rgba(0,47,167,0.6)' },
+    { main: '#E8C26A', sub: 'rgba(232,194,106,0.7)' },
+    { main: '#DC2626', sub: 'rgba(220,38,38,0.6)' },
+    { main: '#16A34A', sub: 'rgba(22,163,74,0.6)' },
+  ];
+  const fonts = [
+    { key: 'sans',  name: 'Sans' },
+    { key: 'serif', name: 'Serif' },
+    { key: 'mono',  name: 'Mono' },
+    { key: 'hand',  name: 'Hand' },
+  ];
+
+  const set = (k, v) => setOpts(o => ({ ...o, [k]: v }));
+
+  return (
+    <div className="screen">
+      <AppBar title="Style" subtitle="STEP 06 · CUSTOMISE"
+        left={<BackBtn onClick={onBack}/>}
+        right={<button className="btn btn-primary" style={{ height: 32, padding: '0 12px', fontSize: 12 }} onClick={onShare}>Share</button>}
+      />
+
+      <div style={{
+        margin: '12px 18px',
+        aspectRatio: '4/5',
+        borderRadius: 'var(--r-lg)', overflow: 'hidden', position: 'relative',
+        border: '1px solid var(--border)',
+      }}>
+        <PhotoBG variant={photo}/>
+        <div style={{ position: 'absolute', inset: 0 }}>
+          <MapOverlay region={region} {...opts}/>
+        </div>
+        <div style={{
+          position: 'absolute', top: 10, left: 10,
+          fontFamily: 'var(--mono)', fontSize: 9, letterSpacing: '0.12em',
+          color: opts.borderColor, textTransform: 'uppercase',
+          background: 'rgba(0,0,0,0.32)', padding: '4px 7px', borderRadius: 4,
+        }}>
+          {REGIONS[region].name}
+        </div>
+      </div>
+
+      <div style={{ padding: '0 18px 22px', flex: 1, overflowY: 'auto' }}>
+        <Section label="Border color">
+          <div style={{ display: 'flex', gap: 10 }}>
+            {palettes.map((p, i) => (
+              <button key={i} onClick={() => set('borderColor', p.main)}
+                className={'swatch' + (opts.borderColor === p.main ? ' active' : '')}
+                style={{ background: p.main }}/>
+            ))}
+          </div>
+        </Section>
+
+        <Section label="Sub-border color">
+          <div style={{ display: 'flex', gap: 10 }}>
+            {palettes.map((p, i) => (
+              <button key={i} onClick={() => set('subBorderColor', p.sub)}
+                className={'swatch' + (opts.subBorderColor === p.sub ? ' active' : '')}
+                style={{ background: p.sub }}/>
+            ))}
+          </div>
+        </Section>
+
+        <Section label="Label font">
+          <div className="seg">
+            {fonts.map(f => (
+              <button key={f.key}
+                className={opts.fontFace === f.key ? 'active' : ''}
+                onClick={() => set('fontFace', f.key)}
+                style={{
+                  fontFamily: f.key === 'mono'  ? 'var(--mono)'  :
+                              f.key === 'serif' ? 'var(--serif)' :
+                              f.key === 'hand'  ? 'var(--hand)'  : 'var(--sans)',
+                  fontStyle: f.key === 'serif' ? 'italic' : 'normal',
+                  fontSize: f.key === 'hand' ? 16 : 12,
+                }}>
+                {f.name}
+              </button>
+            ))}
+          </div>
+        </Section>
+
+        <div style={{ marginTop: 8 }}>
+          <Toggle label="Show borders"        hint="Country outlines"         on={opts.showBorder}    onChange={v => set('showBorder', v)}/>
+          <Toggle label="Capital & cities"    hint="Dots and labels"          on={opts.showCities}    onChange={v => set('showCities', v)}/>
+          <Toggle label="Sea & ocean labels"  hint="Italic surrounding water" on={opts.showSeas}      onChange={v => set('showSeas', v)}/>
+          <Toggle label="Bordering countries" hint="Dashed neighbors"         on={opts.showBordering} onChange={v => set('showBordering', v)}/>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── screen-share.jsx ────────────────────────────────────────────────────────
+
+function ScreenShare({ region = 'italy', onBack, onDone, photo = 'wall' }) {
+  const [sel, setSel] = React.useState(new Set(['ig']));
+  const toggle = (k) => {
+    const n = new Set(sel);
+    n.has(k) ? n.delete(k) : n.add(k);
+    setSel(n);
+  };
+  const targets = [
+    { k: 'ig', name: 'Instagram',  sub: 'Story · 9:16',         initials: 'IG', bg: 'linear-gradient(135deg,#f09433,#dc2743 50%,#bc1888)' },
+    { k: 'tw', name: 'X',          sub: 'Post · 1:1',           initials: 'X',  bg: '#0A0A0A' },
+    { k: 'tk', name: 'TikTok',     sub: 'Video · 9:16',         initials: 'TT', bg: '#111' },
+    { k: 'wa', name: 'WhatsApp',   sub: 'Direct message',       initials: 'WA', bg: '#25D366' },
+    { k: 'ln', name: 'Copy link',  sub: 'pareidomap.app/i/7f3a',initials: '⟶', bg: '#737373' },
+    { k: 'sv', name: 'Save image', sub: 'PNG · 2400×3000',      initials: '↓',  bg: '#002FA7' },
+  ];
+
+  return (
+    <div className="screen">
+      <AppBar title="Share" subtitle="STEP 07 · DISTRIBUTE"
+        left={<BackBtn onClick={onBack}/>}
+        right={<CloseBtn onClick={onDone}/>}
+      />
+
+      <div style={{ display: 'flex', justifyContent: 'center', padding: '20px 0 4px' }}>
+        <div style={{
+          width: 168, aspectRatio: '4/5',
+          borderRadius: 'var(--r-lg)', overflow: 'hidden', position: 'relative',
+          border: '1px solid var(--border)',
+          boxShadow: '0 12px 30px rgba(0,0,0,0.18)',
+          transform: 'rotate(-2deg)',
+        }}>
+          <PhotoBG variant={photo}/>
+          <MapOverlay region={region} borderColor="#fff" subBorderColor="rgba(255,255,255,0.8)"/>
+          <div style={{
+            position: 'absolute', top: 8, left: 8,
+            fontFamily: 'var(--mono)', fontSize: 7, letterSpacing: '0.18em',
+            color: '#fff', textTransform: 'uppercase',
+            background: 'rgba(0,0,0,0.4)', padding: '3px 6px', borderRadius: 3,
+          }}>PAREIDOMAP</div>
+        </div>
+      </div>
+
+      <div style={{ textAlign: 'center', padding: '12px 24px 16px' }}>
+        <div style={{ fontSize: 18, fontWeight: 600, letterSpacing: '-0.01em' }}>
+          Another for the <span className="hand-underline">collection</span>
+        </div>
+        <div style={{ fontSize: 13, color: 'var(--muted-fg)', marginTop: 4 }}>
+          Pick where to send your {REGIONS[region].name.toLowerCase()}.
+        </div>
+      </div>
+
+      <div style={{ padding: '0 18px', flex: 1, overflowY: 'auto' }}>
+        <div className="card" style={{ padding: 4 }}>
+          {targets.map((t, i) => {
+            const on = sel.has(t.k);
+            return (
+              <button key={t.k} onClick={() => toggle(t.k)} style={{
+                display: 'flex', alignItems: 'center', gap: 12,
+                padding: '10px 12px', width: '100%',
+                background: 'transparent', border: 'none', cursor: 'pointer',
+                borderBottom: i < targets.length - 1 ? '1px solid var(--border)' : 'none',
+                textAlign: 'left',
+              }}>
+                <div style={{
+                  width: 34, height: 34, borderRadius: 8, background: t.bg, color: '#fff',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontFamily: 'var(--mono)', fontSize: 11, fontWeight: 500,
+                }}>{t.initials}</div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 14, fontWeight: 500 }}>{t.name}</div>
+                  <div style={{ fontSize: 11, color: 'var(--muted-fg)' }}>{t.sub}</div>
+                </div>
+                <div style={{
+                  width: 18, height: 18, borderRadius: 5,
+                  border: '1px solid ' + (on ? 'var(--accent)' : 'var(--border-2)'),
+                  background: on ? 'var(--accent)' : 'transparent',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  {on && <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                    <path d="M1 5l3 3 5-7" stroke="#fff" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div style={{ padding: '14px 18px 22px' }}>
+        <button className="btn btn-primary" onClick={onDone} style={{ width: '100%' }}>
+          Send to {sel.size} {sel.size === 1 ? 'destination' : 'destinations'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ─── screen-gallery.jsx ──────────────────────────────────────────────────────
+
+const GALLERY = [
+  { region: 'italy',      photo: 'wall',  date: '2 days ago', title: 'Stain in the kitchen' },
+  { region: 'uk',         photo: 'plate', date: 'last week',  title: 'Bite of toast' },
+  { region: 'japan',      photo: 'cloud', date: 'last week',  title: 'Cirrus cloud, dusk' },
+  { region: 'madagascar', photo: 'moss',  date: 'mar 12',     title: 'Moss on a rock' },
+  { region: 'france',     photo: 'wall',  date: 'mar 03',     title: 'Damp on plaster' },
+  { region: 'greenland',  photo: 'plate', date: 'feb 22',     title: 'Spilled flour' },
+  { region: 'italy',      photo: 'cloud', date: 'feb 14',     title: 'Italy again??' },
+  { region: 'uk',         photo: 'moss',  date: 'jan 30',     title: 'Lichen patch' },
+];
+
+function TabBar({ tab = 'gallery', onTab }) {
+  const tabs = [
+    { k: 'home',    l: 'Home',    icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M3 12l9-9 9 9M5 10v10h5v-6h4v6h5V10" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg> },
+    { k: 'gallery', l: 'Journal', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="7" height="7" stroke="currentColor" strokeWidth="1.6"/><rect x="14" y="3" width="7" height="7" stroke="currentColor" strokeWidth="1.6"/><rect x="3" y="14" width="7" height="7" stroke="currentColor" strokeWidth="1.6"/><rect x="14" y="14" width="7" height="7" stroke="currentColor" strokeWidth="1.6"/></svg> },
+    { k: 'snap',    l: 'Snap',    icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="13" r="4" stroke="currentColor" strokeWidth="1.6"/><path d="M3 8h4l2-3h6l2 3h4v11H3z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round"/></svg> },
+    { k: 'me',      l: 'Profile', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="4" stroke="currentColor" strokeWidth="1.6"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/></svg> },
+  ];
+  return (
+    <div className="tabbar">
+      {tabs.map(t => (
+        <button key={t.k} className={tab === t.k ? 'active' : ''} onClick={() => onTab && onTab(t.k)}>
+          {t.icon}
+          <span>{t.l}</span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function ScreenGallery({ onNew, onOpen, onBack, tab = 'gallery', onTab }) {
+  const [layout, setLayout] = React.useState('grid');
+  const [filter, setFilter] = React.useState('all');
+
+  const filtered = filter === 'all' ? GALLERY : GALLERY.filter(g => g.region === filter);
+  const uniqueRegions = [...new Set(GALLERY.map(g => g.region))];
+
+  return (
+    <div className="screen">
+      <AppBar title="Field journal" subtitle={`${GALLERY.length} finds · ${uniqueRegions.length} countries`}
+        left={onBack ? <BackBtn onClick={onBack}/> : <Logo size={20}/>}
+        right={
+          <div className="seg" style={{ padding: 2 }}>
+            <button className={layout === 'grid' ? 'active' : ''} onClick={() => setLayout('grid')} style={{ padding: '4px 8px' }}>
+              <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
+                <rect x="1" y="1" width="5" height="5" stroke="currentColor" strokeWidth="1.2"/>
+                <rect x="8" y="1" width="5" height="5" stroke="currentColor" strokeWidth="1.2"/>
+                <rect x="1" y="8" width="5" height="5" stroke="currentColor" strokeWidth="1.2"/>
+                <rect x="8" y="8" width="5" height="5" stroke="currentColor" strokeWidth="1.2"/>
+              </svg>
+            </button>
+            <button className={layout === 'list' ? 'active' : ''} onClick={() => setLayout('list')} style={{ padding: '4px 8px' }}>
+              <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
+                <line x1="2" y1="3" x2="12" y2="3" stroke="currentColor" strokeWidth="1.2"/>
+                <line x1="2" y1="7" x2="12" y2="7" stroke="currentColor" strokeWidth="1.2"/>
+                <line x1="2" y1="11" x2="12" y2="11" stroke="currentColor" strokeWidth="1.2"/>
+              </svg>
+            </button>
+          </div>
+        }
+      />
+
+      <div style={{
+        display: 'flex', gap: 6, padding: '12px 18px 6px', overflowX: 'auto',
+        borderBottom: '1px solid var(--border)',
+      }}>
+        {[{k:'all',l:'All'}, ...uniqueRegions.map(r => ({k:r, l: REGIONS[r].name.charAt(0) + REGIONS[r].name.slice(1).toLowerCase()}))].map(c => (
+          <button key={c.k} onClick={() => setFilter(c.k)} style={{
+            padding: '5px 11px', borderRadius: 999,
+            border: '1px solid ' + (filter === c.k ? 'var(--accent)' : 'var(--border)'),
+            background: filter === c.k ? 'var(--accent)' : 'transparent',
+            color: filter === c.k ? '#fff' : 'var(--fg)',
+            fontSize: 11.5, fontWeight: 500, cursor: 'pointer',
+            whiteSpace: 'nowrap',
+          }}>{c.l}</button>
+        ))}
+      </div>
+
+      <div style={{ flex: 1, overflowY: 'auto', padding: '12px 18px 80px' }}>
+        {layout === 'grid' ? (
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            {filtered.map((g, i) => (
+              <button key={i} onClick={() => onOpen && onOpen(g)} className="thumb" style={{ border: '1px solid var(--border)', cursor: 'pointer', padding: 0, position: 'relative' }}>
+                <PhotoBG variant={g.photo}/>
+                <div style={{ position: 'absolute', inset: 0 }}>
+                  <MapOverlay region={g.region} borderColor="#fff" subBorderColor="rgba(255,255,255,0.8)" showCities={false} showSeas={false} showBordering={false}/>
+                </div>
+                <div style={{
+                  position: 'absolute', bottom: 0, left: 0, right: 0,
+                  padding: '14px 8px 6px',
+                  background: 'linear-gradient(180deg, transparent, rgba(0,0,0,0.65))',
+                  textAlign: 'left',
+                }}>
+                  <div style={{ fontFamily: 'var(--mono)', fontSize: 8, letterSpacing: '0.16em', color: '#fff', opacity: 0.8, textTransform: 'uppercase' }}>
+                    {g.date}
+                  </div>
+                  <div style={{ fontSize: 12, fontWeight: 500, color: '#fff', marginTop: 1, lineHeight: 1.2 }}>
+                    {REGIONS[g.region].name.charAt(0) + REGIONS[g.region].name.slice(1).toLowerCase()}
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
+        ) : (
+          <div className="card" style={{ padding: 0 }}>
+            {filtered.map((g, i, a) => (
+              <button key={i} onClick={() => onOpen && onOpen(g)} style={{
+                display: 'flex', alignItems: 'center', gap: 12,
+                padding: 10, width: '100%', textAlign: 'left',
+                background: 'transparent', border: 'none', cursor: 'pointer',
+                borderBottom: i < a.length - 1 ? '1px solid var(--border)' : 'none',
+              }}>
+                <div style={{ width: 56, height: 56, borderRadius: 8, overflow: 'hidden', position: 'relative', flexShrink: 0, border: '1px solid var(--border)' }}>
+                  <PhotoBG variant={g.photo}/>
+                  <div style={{ position: 'absolute', inset: 0 }}>
+                    <MapOverlay region={g.region} borderColor="#fff" subBorderColor="rgba(255,255,255,0.8)" showCities={false} showSeas={false} showBordering={false}/>
+                  </div>
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 14, fontWeight: 500 }}>
+                    {REGIONS[g.region].name.charAt(0) + REGIONS[g.region].name.slice(1).toLowerCase()}
+                  </div>
+                  <div style={{ fontSize: 12, color: 'var(--muted-fg)' }}>{g.title}</div>
+                </div>
+                <div style={{ fontFamily: 'var(--mono)', fontSize: 9.5, color: 'var(--muted-fg)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                  {g.date}
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <button onClick={onNew} style={{
+        position: 'absolute', bottom: 78, right: 18, zIndex: 10,
+        width: 52, height: 52, borderRadius: 999,
+        background: 'var(--accent)', color: '#fff',
+        border: 'none', cursor: 'pointer',
+        boxShadow: '0 8px 22px rgba(0,47,167,0.35)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+          <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+        </svg>
+      </button>
+
+      <TabBar tab={tab} onTab={onTab}/>
+    </div>
+  );
+}
+
+// ─── App ─────────────────────────────────────────────────────────────────────
+
+const TWEAK_DEFAULTS = {
+  photo: 'wall',
+  mode: 'canvas',
+};
+
+function Phone({ label, num, children }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }} data-screen-label={`${num} ${label}`}>
+      <div className="phone-label">
+        <span className="phone-num">№ {num}</span>
+        <span>{label}</span>
+      </div>
+      <div style={{
+        width: 320, height: 692, borderRadius: 44, overflow: 'hidden',
+        position: 'relative', background: '#000',
+        boxShadow: '0 30px 60px rgba(0,0,0,0.35), 0 0 0 1px rgba(255,255,255,0.06), inset 0 0 0 3px #1a1817',
+      }}>
+        {/* dynamic island */}
+        <div style={{
+          position: 'absolute', top: 11, left: '50%', transform: 'translateX(-50%)',
+          width: 104, height: 30, borderRadius: 20, background: '#000', zIndex: 100,
+        }} />
+        {/* time */}
+        <div style={{
+          position: 'absolute', top: 16, left: 24, zIndex: 90,
+          fontFamily: '-apple-system, system-ui', fontWeight: 600, fontSize: 14,
+          color: '#0A0A0A', mixBlendMode: 'difference',
+        }}>9:41</div>
+        <div style={{
+          position: 'absolute', top: 18, right: 24, zIndex: 90,
+          display: 'flex', gap: 5, alignItems: 'center', color: '#0A0A0A', mixBlendMode: 'difference',
+        }}>
+          <svg width="16" height="10" viewBox="0 0 19 12">
+            <rect x="0" y="7.5" width="3.2" height="4.5" rx="0.7" fill="currentColor"/>
+            <rect x="4.8" y="5" width="3.2" height="7" rx="0.7" fill="currentColor"/>
+            <rect x="9.6" y="2.5" width="3.2" height="9.5" rx="0.7" fill="currentColor"/>
+            <rect x="14.4" y="0" width="3.2" height="12" rx="0.7" fill="currentColor"/>
+          </svg>
+          <svg width="22" height="11" viewBox="0 0 27 13">
+            <rect x="0.5" y="0.5" width="23" height="12" rx="3.5" stroke="currentColor" strokeOpacity="0.5" fill="none"/>
+            <rect x="2" y="2" width="18" height="9" rx="2" fill="currentColor"/>
+          </svg>
+        </div>
+        {/* home indicator */}
+        <div style={{
+          position: 'absolute', bottom: 8, left: '50%', transform: 'translateX(-50%)',
+          zIndex: 100, width: 110, height: 4, borderRadius: 100,
+          background: 'rgba(0,0,0,0.4)', mixBlendMode: 'difference',
+        }} />
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function TweakPanel({ show, tw, update }) {
+  if (!show) return null;
+  const opt = (k, v, label) => (
+    <button key={v} className={tw[k] === v ? 'active' : ''} onClick={() => update(k, v)}>{label}</button>
+  );
+  return (
+    <div className="tweaks-panel">
+      <h4>View</h4>
+      <div className="row">
+        {opt('mode', 'canvas', 'All screens')}
+        {opt('mode', 'flow',   'Single flow')}
+      </div>
+      <h4>Photo substrate</h4>
+      <div className="row">
+        {opt('photo', 'wall',  'Wall')}
+        {opt('photo', 'plate', 'Plate')}
+        {opt('photo', 'moss',  'Moss')}
+        {opt('photo', 'cloud', 'Cloud')}
+      </div>
+    </div>
+  );
+}
+
+function App() {
+  const [tw, setTw] = React.useState(TWEAK_DEFAULTS);
+  const [showTweaks, setShowTweaks] = React.useState(false);
+  const [flowStep, setFlowStep] = React.useState(0);
+
+  React.useEffect(() => {
+    const handler = (e) => {
+      if (!e.data) return;
+      if (e.data.type === '__activate_edit_mode')   setShowTweaks(true);
+      if (e.data.type === '__deactivate_edit_mode') setShowTweaks(false);
+    };
+    window.addEventListener('message', handler);
+    window.parent.postMessage({ type: '__edit_mode_available' }, '*');
+    return () => window.removeEventListener('message', handler);
+  }, []);
+
+  const updateTweak = (k, v) => {
+    const next = { ...tw, [k]: v };
+    setTw(next);
+    window.parent.postMessage({ type: '__edit_mode_set_keys', edits: { [k]: v } }, '*');
+  };
+
+  // Auto-advance loading screen in flow mode
+  React.useEffect(() => {
+    if (tw.mode === 'flow' && flowStep === 3) {
+      const t = setTimeout(() => setFlowStep(4), 3400);
+      return () => clearTimeout(t);
+    }
+  }, [tw.mode, flowStep]);
+
+  // Floating tweaks toggle button
+  const TweaksBtn = () => (
+    <button className="tweaks-btn" onClick={() => setShowTweaks(s => !s)}>
+      {showTweaks ? '✕ close' : '⚙ tweaks'}
+    </button>
+  );
+
+  if (tw.mode === 'flow') {
+    const labels  = ['INTRO','CAPTURE','SEGMENT','MATCHING','RESULT','STYLE','SHARE','JOURNAL'];
+    const screens = [
+      <ScreenOnboarding onStart={() => setFlowStep(1)} />,
+      <ScreenCamera     photo={tw.photo} onCapture={() => setFlowStep(2)} onBack={() => setFlowStep(0)} />,
+      <ScreenSegment    variant={tw.photo} onConfirm={() => setFlowStep(3)} onBack={() => setFlowStep(1)} />,
+      <ScreenLoading />,
+      <ScreenResult     photo={tw.photo} onStyle={() => setFlowStep(5)} onBack={() => setFlowStep(2)} />,
+      <ScreenStyle      photo={tw.photo} region="italy" onShare={() => setFlowStep(6)} onBack={() => setFlowStep(4)} />,
+      <ScreenShare      photo={tw.photo} region="italy" onDone={() => setFlowStep(7)} onBack={() => setFlowStep(5)} />,
+      <ScreenGallery    onNew={() => setFlowStep(1)} onBack={() => setFlowStep(0)} tab="gallery" onTab={(k) => { if (k === 'snap') setFlowStep(1); if (k === 'home') setFlowStep(0); }} />,
+    ];
+    return (
+      <>
+        <div className="stage" style={{ minHeight: '100vh' }}>
+          <Phone label={labels[flowStep]} num={String(flowStep + 1).padStart(2, '0')}>
+            {screens[flowStep]}
+          </Phone>
+        </div>
+        <div style={{
+          position: 'fixed', bottom: 12, left: '50%', transform: 'translateX(-50%)',
+          display: 'flex', gap: 6, zIndex: 999,
+          background: 'rgba(0,0,0,0.5)', padding: '8px 12px', borderRadius: 999,
+        }}>
+          {screens.map((_, i) => (
+            <button key={i} onClick={() => setFlowStep(i)} style={{
+              width: 9, height: 9, borderRadius: 999, padding: 0, cursor: 'pointer',
+              background: i === flowStep ? '#fff' : 'transparent',
+              border: '1px solid rgba(255,255,255,0.6)',
+            }}/>
+          ))}
+        </div>
+        <TweaksBtn />
+        <TweakPanel show={showTweaks} tw={tw} update={updateTweak} />
+      </>
+    );
+  }
+
+  return (
+    <>
+      <div className="stage">
+        <Phone label="INTRO"    num="01"><ScreenOnboarding onStart={() => {}} /></Phone>
+        <Phone label="CAPTURE"  num="02"><ScreenCamera photo={tw.photo} onCapture={() => {}} onBack={() => {}} /></Phone>
+        <Phone label="SEGMENT"  num="03"><ScreenSegment variant={tw.photo} onConfirm={() => {}} onBack={() => {}} /></Phone>
+        <Phone label="MATCHING" num="04"><ScreenLoading /></Phone>
+        <Phone label="RESULT"   num="05"><ScreenResult photo={tw.photo} onStyle={() => {}} onBack={() => {}} /></Phone>
+        <Phone label="STYLE"    num="06"><ScreenStyle photo={tw.photo} region="italy" onShare={() => {}} onBack={() => {}} /></Phone>
+        <Phone label="SHARE"    num="07"><ScreenShare photo={tw.photo} region="italy" onDone={() => {}} onBack={() => {}} /></Phone>
+        <Phone label="JOURNAL"  num="08"><ScreenGallery onNew={() => {}} tab="gallery" /></Phone>
+      </div>
+      <TweaksBtn />
+      <TweakPanel show={showTweaks} tw={tw} update={updateTweak} />
+    </>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+
+</script>
+</body>
+</html>
