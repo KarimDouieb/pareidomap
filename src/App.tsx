@@ -12,7 +12,7 @@ export default function App() {
 
   function handleCapture(dataUrl: string) {
     setPhoto(dataUrl)
-    setScreen('preview')
+    setScreen('trace')
   }
 
   return (

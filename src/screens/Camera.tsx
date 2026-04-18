@@ -2,8 +2,11 @@ import { useEffect, useRef } from 'react'
 
 export function Camera({ onCapture }: { onCapture: (dataUrl: string) => void }) {
   const inputRef = useRef<HTMLInputElement>(null)
+  const openedRef = useRef(false)
 
   useEffect(() => {
+    if (openedRef.current) return
+    openedRef.current = true
     inputRef.current?.click()
   }, [])
 
