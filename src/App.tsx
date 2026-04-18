@@ -2,8 +2,9 @@ import { useState } from 'react'
 import { Onboarding } from '@/screens/Onboarding'
 import { Camera } from '@/screens/Camera'
 import { Preview } from '@/screens/Preview'
+import { Trace } from '@/screens/Trace'
 
-type Screen = 'onboarding' | 'camera' | 'preview'
+type Screen = 'onboarding' | 'camera' | 'preview' | 'trace'
 
 export default function App() {
   const [screen, setScreen] = useState<Screen>('onboarding')
@@ -27,7 +28,14 @@ export default function App() {
           <Preview
             photo={photo}
             onRetake={() => setScreen('camera')}
-            onContinue={() => console.log('continue to trace')}
+            onContinue={() => setScreen('trace')}
+          />
+        )}
+        {screen === 'trace' && photo && (
+          <Trace
+            photo={photo}
+            onRetake={() => setScreen('preview')}
+            onContinue={() => console.log('continue to match')}
           />
         )}
       </div>
