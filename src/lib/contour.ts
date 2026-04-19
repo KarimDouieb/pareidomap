@@ -68,8 +68,8 @@ export function getMaskBounds(
   }
   if (count === 0) return null
   return {
-    normCx: sumX / count / width,
-    normCy: sumY / count / height,
+    normCx: (minX + maxX) / 2 / width,
+    normCy: (minY + maxY) / 2 / height,
     normW: (maxX - minX) / width,
     normH: (maxY - minY) / height,
   }

@@ -117,8 +117,9 @@ export function Result({
       maskBounds,
       match.bestAngle,
       getAllFeatures(),
+      maskSize ?? undefined,
     )
-  }, [matches, activeIndex, cities, maskBounds])
+  }, [matches, activeIndex, cities, maskBounds, maskSize])
 
   // Re-render when container resizes
   useEffect(() => {
@@ -131,7 +132,7 @@ export function Result({
       if (!feature || !svgRef.current) return
       const { offsetWidth: w, offsetHeight: h } = container
       if (w > 0 && h > 0) {
-        renderCountryMap(svgRef.current, feature, cities[match.iso_a3] ?? [], w, h, maskBounds, match.bestAngle, getAllFeatures())
+        renderCountryMap(svgRef.current, feature, cities[match.iso_a3] ?? [], w, h, maskBounds, match.bestAngle, getAllFeatures(), maskSize ?? undefined)
       }
     })
     ro.observe(container)

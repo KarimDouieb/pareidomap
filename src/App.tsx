@@ -5,7 +5,7 @@ import { Preview } from '@/screens/Preview'
 import { Trace, type TraceContinuePayload } from '@/screens/Trace'
 import { Result } from '@/screens/Result'
 import { loadCountryData, matchCountries, type MatchResult, type DistanceMetric } from '@/lib/matcher'
-import { extractLargestBlob, traceContour, simplifyPolygon, getMaskBounds, type MaskBounds, type Point } from '@/lib/contour'
+import { extractLargestBlob, traceContour, simplifyPolygon, type MaskBounds, type Point } from '@/lib/contour'
 
 type Screen = 'onboarding' | 'camera' | 'preview' | 'trace' | 'result'
 
@@ -29,18 +29,23 @@ export default function App() {
 
   function handleContinue({ mask, width, height }: TraceContinuePayload) {
     setMatches(null)
-    setMaskBounds(getMaskBounds(mask, width, height))
+    setMaskBounds(null)
     setScreen('result')
-    // Run matching asynchronously so the result screen appears immediately
     setTimeout(() => {
       const blob = extractLargestBlob(mask, width, height)
       const contour = traceContour(blob, width, height)
       const poly = simplifyPolygon(contour, 2)
+      // Derive bounds from the polygon — same bounding box the matching uses
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
+      for (const [x, y] of poly) {
+        if (x < minX) minX = x; if (x > maxX) maxX = x
+        if (y < minY) minY = y; if (y > maxY) maxY = y
+      }
+      setMaskBounds({ normCx: (minX + maxX) / 2 / width, normCy: (minY + maxY) / 2 / height, normW: (maxX - minX) / width, normH: (maxY - minY) / height })
       setMaskSize({ w: width, h: height })
       setDebugPoly(poly)
       setUserPoly(poly)
-      const results = matchCountries(poly, metric)
-      setMatches(results)
+      setMatches(matchCountries(poly, metric))
     }, 0)
   }
 

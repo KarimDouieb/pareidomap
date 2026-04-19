@@ -20,6 +20,7 @@ export function renderCountryMap(
   bestAngle: number,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   allFeatures: any[] = [],
+  maskSize: { w: number; h: number } | null = null,
 ): void {
   const svg = select(svgEl)
   svg.selectAll('*').remove()
@@ -29,19 +30,41 @@ export function renderCountryMap(
   const REF = 1000
   const tempProj = geoMercator().fitSize([REF, REF], feature as GeoPermissibleObjects)
   const tempPathGen = geoPath(tempProj)
-  const [[bx0, by0], [bx1, by1]] = tempPathGen.bounds(feature as GeoPermissibleObjects)
-  const [countryCx, countryCy] = tempPathGen.centroid(feature as GeoPermissibleObjects)
-  const countryDiag = Math.sqrt((bx1 - bx0) ** 2 + (by1 - by0) ** 2)
+
+  // Use only the largest ring (mainland) for alignment — matches getCountryRawPoly / debug panel.
+  // The full feature (all islands) is used for rendering but not for bounds.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const geom = (feature as any).geometry
+  const rings: number[][][] = geom?.type === 'Polygon'
+    ? [geom.coordinates[0]]
+    : geom?.type === 'MultiPolygon'
+      ? geom.coordinates.map((p: number[][][][]) => p[0])
+      : []
+  const mainlandRing: number[][] = rings.length
+    ? rings.reduce((best, r) => r.length > best.length ? r : best)
+    : []
+  const mainlandFeature = mainlandRing.length
+    ? { type: 'Feature', geometry: { type: 'Polygon', coordinates: [mainlandRing] }, properties: {} }
+    : feature
+  const [[bx0, by0], [bx1, by1]] = tempPathGen.bounds(mainlandFeature as GeoPermissibleObjects)
+  const countryCx = (bx0 + bx1) / 2
+  const countryCy = (by0 + by1) / 2
+  const countryMaxDim = Math.max(bx1 - bx0, by1 - by0)
 
   // ── Compute SVG-space transform ─────────────────────────────────────────────
   let transform: string
-  if (maskBounds && countryDiag > 0) {
-    const cx = maskBounds.normCx * width
-    const cy = maskBounds.normCy * height
-    const maskDiag = Math.sqrt((maskBounds.normW * width) ** 2 + (maskBounds.normH * height) ** 2)
-    const scale = (maskDiag * 1.1) / countryDiag  // slight padding factor
-    // SVG transforms apply right-to-left:
-    // 1. center country at origin, 2. scale, 3. rotate, 4. move to mask centroid
+  if (maskBounds && countryMaxDim > 0) {
+    // Apply object-cover transform: mask coords are in natural image space,
+    // but the photo is displayed with object-cover in the container.
+    const imgW = maskSize?.w ?? width
+    const imgH = maskSize?.h ?? height
+    const coverScale = Math.max(width / imgW, height / imgH)
+    const offsetX = (width - imgW * coverScale) / 2
+    const offsetY = (height - imgH * coverScale) / 2
+    const cx = maskBounds.normCx * imgW * coverScale + offsetX
+    const cy = maskBounds.normCy * imgH * coverScale + offsetY
+    const maskMaxDim = Math.max(maskBounds.normW * imgW, maskBounds.normH * imgH) * coverScale
+    const scale = maskMaxDim / countryMaxDim
     // bestAngle is rotation in Y-up EFD space; Y-down (SVG) flips the sign, so we use +bestAngle here.
     transform = `translate(${cx},${cy}) rotate(${bestAngle}) scale(${scale}) translate(${-countryCx},${-countryCy})`
   } else {
@@ -70,8 +93,8 @@ export function renderCountryMap(
       worldG.append('path').datum(f as GeoPermissibleObjects)
         .attr('d', d => tempPathGen(d))
         .attr('fill', 'none')
-        .attr('stroke', 'rgba(255,255,255,0.12)')
-        .attr('stroke-width', 0.8 / ((maskBounds ? Math.sqrt((maskBounds.normW * width) ** 2 + (maskBounds.normH * height) ** 2) : REF) / countryDiag))
+        .attr('stroke', 'rgba(255, 255, 255, 0.33)')
+        .attr('stroke-width', 0.8 / ((maskBounds ? Math.sqrt((maskBounds.normW * width) ** 2 + (maskBounds.normH * height) ** 2) : REF) / countryMaxDim))
         .attr('stroke-linejoin', 'round')
     }
   }
@@ -85,7 +108,7 @@ export function renderCountryMap(
     .attr('d', d => tempPathGen(d))
     .attr('fill', 'none')
     .attr('stroke', 'white')
-    .attr('stroke-width', 2 / ((maskBounds ? Math.sqrt((maskBounds.normW * width) ** 2 + (maskBounds.normH * height) ** 2) : REF) / countryDiag))
+    .attr('stroke-width', 2 / ((maskBounds ? Math.sqrt((maskBounds.normW * width) ** 2 + (maskBounds.normH * height) ** 2) : REF) / countryMaxDim))
     .attr('stroke-linejoin', 'round')
     .attr('filter', 'drop-shadow(0 0 4px rgba(0,0,0,0.9))')
 
@@ -103,7 +126,7 @@ export function renderCountryMap(
       .attr('fill', 'white').attr('opacity', 0.9)
 
     // Scale text inversely so it reads at a constant size regardless of zoom
-    const scale = countryDiag / ((maskBounds ? Math.sqrt((maskBounds.normW * width) ** 2 + (maskBounds.normH * height) ** 2) * 1.1 : REF))
+    const scale = countryMaxDim / ((maskBounds ? Math.sqrt((maskBounds.normW * width) ** 2 + (maskBounds.normH * height) ** 2) * 1.1 : REF))
     g.append('text')
       .attr('x', cx + 10 * scale).attr('y', cy + 4 * scale)
       .attr('font-family', 'Geist, sans-serif')
