@@ -4,7 +4,7 @@ import { Logo } from '@/components/Logo'
 import { ArrowLeft, ArrowRight } from 'lucide-react'
 import { useSegmentation } from '@/hooks/useSegmentation'
 
-interface TapDot { x: number; y: number }
+interface TapDot { x: number; y: number; remove?: boolean }
 
 export interface TraceContinuePayload {
   mask: Uint8ClampedArray
@@ -19,8 +19,10 @@ export function Trace({ photo, onRetake, onContinue }: {
 }) {
   const imgRef = useRef<HTMLImageElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const { status, downloadProgress, mask, segment, clearMask } = useSegmentation()
-  const [tapDot, setTapDot] = useState<TapDot | null>(null)
+  const { status, downloadProgress, mask, segment, subtractSegment, clearMask } = useSegmentation()
+  const [tapDots, setTapDots] = useState<TapDot[]>([])
+  const lastTapRef = useRef<{ time: number; x: number; y: number } | null>(null)
+  const tapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Draw mask onto canvas whenever it changes
   useEffect(() => {
@@ -58,13 +60,33 @@ export function Trace({ photo, onRetake, onContinue }: {
     const rect = e.currentTarget.getBoundingClientRect()
     const relX = (e.clientX - rect.left) / rect.width
     const relY = (e.clientY - rect.top) / rect.height
-    setTapDot({ x: relX * 100, y: relY * 100 })
-    if (imgRef.current) segment(imgRef.current, relX, relY)
+
+    const now = Date.now()
+    const last = lastTapRef.current
+    const isDoubleTap = last && now - last.time < 350
+      && Math.abs(relX - last.x) < 0.05 && Math.abs(relY - last.y) < 0.05
+
+    lastTapRef.current = { time: now, x: relX, y: relY }
+
+    if (isDoubleTap && mask) {
+      if (tapTimerRef.current) { clearTimeout(tapTimerRef.current); tapTimerRef.current = null }
+      lastTapRef.current = null
+      setTapDots(dots => [...dots, { x: relX * 100, y: relY * 100, remove: true }])
+      if (imgRef.current) subtractSegment(imgRef.current, relX, relY)
+    } else {
+      tapTimerRef.current = setTimeout(() => {
+        tapTimerRef.current = null
+        setTapDots([{ x: relX * 100, y: relY * 100 }])
+        if (imgRef.current) segment(imgRef.current, relX, relY)
+      }, 350)
+    }
   }
 
   function handleRetry() {
+    if (tapTimerRef.current) { clearTimeout(tapTimerRef.current); tapTimerRef.current = null }
     clearMask()
-    setTapDot(null)
+    setTapDots([])
+    lastTapRef.current = null
   }
 
   const isDownloading = status === 'downloading'
@@ -98,13 +120,14 @@ export function Trace({ photo, onRetake, onContinue }: {
             style={{ cursor: status === 'ready' ? 'crosshair' : 'default' }}
             onPointerDown={handleTap}
           />
-          {/* Tap dot */}
-          {tapDot && (
+          {/* Tap dots */}
+          {tapDots.map((dot, i) => (
             <div
-              className="absolute w-4 h-4 rounded-full border-2 border-white bg-[#002FA7] -translate-x-1/2 -translate-y-1/2 pointer-events-none"
-              style={{ left: `${tapDot.x}%`, top: `${tapDot.y}%` }}
+              key={i}
+              className={`absolute w-4 h-4 rounded-full border-2 border-white -translate-x-1/2 -translate-y-1/2 pointer-events-none ${dot.remove ? 'bg-red-500' : 'bg-[#002FA7]'}`}
+              style={{ left: `${dot.x}%`, top: `${dot.y}%` }}
             />
-          )}
+          ))}
           {/* Inferring spinner */}
           {isInferring && (
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
@@ -116,7 +139,7 @@ export function Trace({ photo, onRetake, onContinue }: {
         {!isDownloading && (
           <p className="text-xs text-muted-foreground text-center mt-3">
             {status === 'ready' && !hasMask && 'Tap the shape you want to trace'}
-            {status === 'ready' && hasMask && 'Shape detected!'}
+            {status === 'ready' && hasMask && 'Shape detected — double-tap to remove a part'}
             {status === 'error' && 'Something went wrong'}
           </p>
         )}

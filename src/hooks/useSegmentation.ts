@@ -40,9 +40,26 @@ export function useSegmentation() {
     }
   }
 
+  async function subtractSegment(img: HTMLImageElement, normX: number, normY: number) {
+    setState(s => ({ ...s, status: 'inferring' }))
+    try {
+      const removeMask = await runSegmentation(img, normX, normY)
+      setState(s => {
+        if (!s.mask) return { ...s, status: 'ready' }
+        const next = new Uint8ClampedArray(s.mask.length)
+        for (let i = 0; i < s.mask.length; i++) {
+          next[i] = s.mask[i] === 255 && removeMask[i] !== 255 ? 255 : 0
+        }
+        return { ...s, status: 'ready', mask: next }
+      })
+    } catch (err) {
+      setState(s => ({ ...s, status: 'error', error: String(err) }))
+    }
+  }
+
   function clearMask() {
     setState(s => ({ ...s, mask: null }))
   }
 
-  return { ...state, segment, clearMask }
+  return { ...state, segment, subtractSegment, clearMask }
 }

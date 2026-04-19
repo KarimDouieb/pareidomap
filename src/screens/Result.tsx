@@ -48,7 +48,7 @@ function ShapeCard({ debug }: { debug: ShapeDebug }) {
         <polygon points={userRaw} fill="none" stroke="#3b82f6" strokeWidth="1" strokeLinejoin="round" opacity="0.85" />
       </svg>
       <span className="text-[9px] font-mono text-muted-foreground truncate max-w-[88px] text-center">{debug.name}</span>
-      <span className="text-[9px] font-mono text-[#002FA7]">d={debug.bestDist.toFixed(3)} @{debug.bestAngle}°</span>
+      {/* <span className="text-[9px] font-mono text-[#002FA7]">d={debug.bestDist.toFixed(3)} @{debug.bestAngle}°</span> */}
     </div>
   )
 }
@@ -141,13 +141,10 @@ export function Result({
 
   const loading = !matches
 
-  function handleToggleDebug() {
+   useEffect(() => {
     if (!matches || !userPoly) return
-    if (!showDebug && !debugShapes) {
-      setDebugShapes(getDebugShapes(userPoly, matches.slice(0, 50).map(m => m.iso_a3), metric))
-    }
-    setShowDebug(v => !v)
-  }
+    setDebugShapes(getDebugShapes(userPoly, matches.slice(0, 32).map(m => m.iso_a3), metric))
+  }, [matches, userPoly, metric])
 
   function handleMetricChange(m: DistanceMetric) {
     onMetricChange(m)
@@ -174,7 +171,6 @@ export function Result({
           )}
         </div>
         <button
-          onClick={handleToggleDebug}
           className={cn(
             'w-9 h-9 rounded-[10px] border flex items-center justify-center',
             showDebug ? 'border-[#002FA7] text-[#002FA7]' : 'border-border',
@@ -306,16 +302,15 @@ export function Result({
         </div>
       )}
 
-      {/* Debug panel — EFD reconstructions at rotation 0° */}
-      {showDebug && debugShapes && (
+      { debugShapes && (
         <div className="mx-4 mt-3 rounded-[14px] border border-border p-4">
           <div className="text-[10px] font-mono text-muted-foreground tracking-widest uppercase mb-3">
-            Shape debug &nbsp;
-            <span className="text-blue-500">■</span> user &nbsp;
+            Best Matches &nbsp;
+            <span className="text-blue-500">■</span> shape &nbsp;
             <span className="text-red-500">■</span> country
           </div>
           <div className="grid grid-cols-4 gap-3">
-            {debugShapes.map(d => <ShapeCard key={d.iso} debug={d} />)}
+            {debugShapes?.map(d => <ShapeCard key={d.iso} debug={d} />)}
           </div>
         </div>
       )}
