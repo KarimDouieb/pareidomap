@@ -150,7 +150,8 @@ export function Result({
 
   function handleMetricChange(m: DistanceMetric) {
     onMetricChange(m)
-    setDebugShapes(null) // invalidate debug cache so it recomputes with new metric
+    setDebugShapes(null)
+    setActiveIndex(0)
   }
 
   return (
@@ -248,8 +249,26 @@ export function Result({
             </div>
           </div>
 
+          {/* Metric selector */}
+          <div className="flex gap-1 mt-4 flex-wrap">
+            {METRICS.map(({ value, label }) => (
+              <button
+                key={value}
+                onClick={() => handleMetricChange(value)}
+                className={cn(
+                  'px-2 py-0.5 rounded text-[9px] font-mono border transition-colors',
+                  metric === value
+                    ? 'bg-[#002FA7] text-white border-[#002FA7]'
+                    : 'border-border text-muted-foreground',
+                )}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
           {/* Carousel navigation */}
-          <div className="flex items-center justify-between mt-4">
+          <div className="flex items-center justify-between mt-3">
             <button
               onClick={() => setActiveIndex(i => Math.max(0, i - 1))}
               className={cn(
@@ -289,28 +308,10 @@ export function Result({
       {/* Debug panel — EFD reconstructions at rotation 0° */}
       {showDebug && debugShapes && (
         <div className="mx-4 mt-3 rounded-[14px] border border-border p-4">
-          <div className="flex items-center justify-between mb-3">
-            <div className="text-[10px] font-mono text-muted-foreground tracking-widest uppercase">
-              EFD debug &nbsp;
-              <span className="text-blue-500">■</span> user &nbsp;
-              <span className="text-red-500">■</span> country
-            </div>
-            <div className="flex gap-1">
-              {METRICS.map(({ value, label }) => (
-                <button
-                  key={value}
-                  onClick={() => handleMetricChange(value)}
-                  className={cn(
-                    'px-2 py-0.5 rounded text-[9px] font-mono border transition-colors',
-                    metric === value
-                      ? 'bg-[#002FA7] text-white border-[#002FA7]'
-                      : 'border-border text-muted-foreground',
-                  )}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
+          <div className="text-[10px] font-mono text-muted-foreground tracking-widest uppercase mb-3">
+            Shape debug &nbsp;
+            <span className="text-blue-500">■</span> user &nbsp;
+            <span className="text-red-500">■</span> country
           </div>
           <div className="grid grid-cols-4 gap-3">
             {debugShapes.map(d => <ShapeCard key={d.iso} debug={d} />)}

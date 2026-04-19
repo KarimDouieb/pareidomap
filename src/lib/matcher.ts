@@ -12,6 +12,7 @@ export interface MatchResult {
   subregion: string
   continent: string
   score: number
+  bestDist: number
   bestAngle: number
 }
 
@@ -108,9 +109,9 @@ export function matchCountries(poly: Point[], metric: DistanceMetric = 'weighted
         if (d < bestDist) { bestDist = d; bestAngle = ROTATION_OFFSETS[r] }
       }
       const score = Math.round(100 * Math.exp(-bestDist * SCORE_K))
-      return { iso_a3: country.iso_a3, name: country.name, subregion: country.subregion, continent: country.continent, score, bestAngle }
+      return { iso_a3: country.iso_a3, name: country.name, subregion: country.subregion, continent: country.continent, score, bestDist, bestAngle }
     })
-    return scored.sort((a, b) => b.score - a.score).slice(0, 50)
+    return scored.sort((a, b) => a.bestDist - b.bestDist).slice(0, 50)
   }
 
   // Geometric metrics: compare normalized raw polygons
@@ -128,10 +129,10 @@ export function matchCountries(poly: Point[], metric: DistanceMetric = 'weighted
       if (d < bestDist) { bestDist = d; bestAngle = ROTATION_OFFSETS[r] }
     }
     const score = Math.round(100 * Math.exp(-bestDist * SCORE_K))
-    return { iso_a3: country.iso_a3, name: country.name, subregion: country.subregion, continent: country.continent, score, bestAngle }
+    return { iso_a3: country.iso_a3, name: country.name, subregion: country.subregion, continent: country.continent, score, bestDist, bestAngle }
   }).filter(Boolean) as MatchResult[]
 
-  return scored.sort((a, b) => b.score - a.score).slice(0, 50)
+  return scored.sort((a, b) => a.bestDist - b.bestDist).slice(0, 50)
 }
 
 
