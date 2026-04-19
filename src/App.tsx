@@ -1,18 +1,40 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Onboarding } from '@/screens/Onboarding'
 import { Camera } from '@/screens/Camera'
 import { Preview } from '@/screens/Preview'
-import { Trace } from '@/screens/Trace'
+import { Trace, type TraceContinuePayload } from '@/screens/Trace'
+import { Result } from '@/screens/Result'
+import { loadCountryData, matchCountries, type MatchResult } from '@/lib/matcher'
+import { extractLargestBlob, traceContour, simplifyPolygon, getMaskBounds, type MaskBounds } from '@/lib/contour'
 
-type Screen = 'onboarding' | 'camera' | 'preview' | 'trace'
+type Screen = 'onboarding' | 'camera' | 'preview' | 'trace' | 'result'
 
 export default function App() {
   const [screen, setScreen] = useState<Screen>('onboarding')
   const [photo, setPhoto] = useState<string | null>(null)
+  const [matches, setMatches] = useState<MatchResult[] | null>(null)
+  const [maskBounds, setMaskBounds] = useState<MaskBounds | null>(null)
+
+  // Preload country data in the background on mount
+  useEffect(() => { loadCountryData().catch(() => {}) }, [])
 
   function handleCapture(dataUrl: string) {
     setPhoto(dataUrl)
     setScreen('trace')
+  }
+
+  function handleContinue({ mask, width, height }: TraceContinuePayload) {
+    setMatches(null)
+    setMaskBounds(getMaskBounds(mask, width, height))
+    setScreen('result')
+    // Run matching asynchronously so the result screen appears immediately
+    setTimeout(() => {
+      const blob = extractLargestBlob(mask, width, height)
+      const contour = traceContour(blob, width, height)
+      const poly = simplifyPolygon(contour, 2)
+      const results = matchCountries(poly)
+      setMatches(results)
+    }, 0)
   }
 
   return (
@@ -34,8 +56,16 @@ export default function App() {
         {screen === 'trace' && photo && (
           <Trace
             photo={photo}
-            onRetake={() => setScreen('preview')}
-            onContinue={() => console.log('continue to match')}
+            onRetake={() => setScreen('camera')}
+            onContinue={handleContinue}
+          />
+        )}
+        {screen === 'result' && (
+          <Result
+            matches={matches}
+            maskBounds={maskBounds}
+            photo={photo}
+            onRetake={() => { setMatches(null); setMaskBounds(null); setScreen('camera') }}
           />
         )}
       </div>

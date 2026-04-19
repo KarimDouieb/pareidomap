@@ -6,10 +6,16 @@ import { useSegmentation } from '@/hooks/useSegmentation'
 
 interface TapDot { x: number; y: number }
 
+export interface TraceContinuePayload {
+  mask: Uint8ClampedArray
+  width: number
+  height: number
+}
+
 export function Trace({ photo, onRetake, onContinue }: {
   photo: string
   onRetake: () => void
-  onContinue: () => void
+  onContinue: (payload: TraceContinuePayload) => void
 }) {
   const imgRef = useRef<HTMLImageElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -142,7 +148,11 @@ export function Trace({ photo, onRetake, onContinue }: {
       <div className="flex flex-col px-6 pb-8 pt-4 gap-2">
         {hasMask ? (
           <>
-            <Button className="w-full" onClick={onContinue}>
+            <Button className="w-full" onClick={() => {
+              if (mask && imgRef.current) {
+                onContinue({ mask, width: imgRef.current.naturalWidth, height: imgRef.current.naturalHeight })
+              }
+            }}>
               Looks good
               <ArrowRight className="w-[14px] h-[14px]" />
             </Button>
