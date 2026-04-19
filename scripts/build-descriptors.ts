@@ -3,7 +3,7 @@ import { resolve } from 'path'
 
 const WORLD_PATH = resolve(import.meta.dirname, '../public/world.geojson')
 const OUT = resolve(import.meta.dirname, '../public/country-descriptors.json')
-const N_HARMONICS = 32
+const N_HARMONICS = 128
 const N_SAMPLES = 512
 
 // ── Geometry helpers ────────────────────────────────────────────────────────
@@ -56,9 +56,12 @@ function resamplePolygon(poly: Ring, n: number): Ring {
   for (let i = 0; i < n; i++) {
     const target = (i / n) * totalLen
     while (j < lens.length - 1 && lens[j + 1] < target) j++
-    const t = j < lens.length - 1 ? (target - lens[j]) / (lens[j + 1] - lens[j]) : 0
-    const a = poly[j % poly.length]
-    const b = poly[(j + 1) % poly.length]
+    // Closing segment: interpolate from last vertex back to first vertex
+    const isClosing = j >= lens.length - 1
+    const seg = isClosing ? totalLen - lens[j] : lens[j + 1] - lens[j]
+    const t = seg > 1e-10 ? (target - lens[j]) / seg : 0
+    const a = poly[j]
+    const b = isClosing ? poly[0] : poly[j + 1]
     result.push([a[0] + t * (b[0] - a[0]), a[1] + t * (b[1] - a[1])])
   }
   return result

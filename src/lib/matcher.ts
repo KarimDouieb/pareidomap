@@ -1,5 +1,5 @@
 import type { Point } from './contour'
-import { resamplePolygon, computeEFD, rotatePolygon, descriptorDistance } from './descriptor'
+import { resamplePolygon, computeEFD, rotatePolygon, descriptorDistance, reconstructFromEFD } from './descriptor'
 
 const CACHE_NAME = 'pareidomap-ml-v1'
 const BASE = import.meta.env.BASE_URL
@@ -62,15 +62,23 @@ export function getAllFeatures(): object[] {
 
 const ROTATION_OFFSETS = [-45, -30, -15, 0, 15, 30, 45]
 const N_SAMPLES = 512
-const N_HARMONICS = 32
+const N_HARMONICS = 128
 const SCORE_K = 3.5
+
+// Flip Y so user's image coords (Y-down) align with Mercator coords (Y-up).
+// Without this, EFD cn/dn components have opposite sign to country descriptors.
+function flipY(poly: Point[]): Point[] {
+  return poly.map(([x, y]) => [x, -y])
+}
 
 export function matchCountries(poly: Point[]): MatchResult[] {
   if (countryDescriptors.length === 0) return []
 
+  const normalized = flipY(poly)
+
   // Pre-compute descriptors at each rotation angle
   const rotatedDescs = ROTATION_OFFSETS.map(deg => {
-    const rotated = rotatePolygon(poly, deg)
+    const rotated = rotatePolygon(normalized, deg)
     const resampled = resamplePolygon(rotated, N_SAMPLES)
     return computeEFD(resampled, N_HARMONICS)
   })
@@ -87,4 +95,72 @@ export function matchCountries(poly: Point[]): MatchResult[] {
   })
 
   return scored.sort((a, b) => b.score - a.score).slice(0, 15)
+}
+
+// ── Debug helpers ─────────────────────────────────────────────────────────────
+
+export interface ShapeDebug {
+  iso: string
+  name: string
+  bestDist: number
+  bestAngle: number
+  userEFDRecon: Point[]   // user EFD reconstructed at best rotation
+  countryEFDRecon: Point[]
+  userRawPoly: Point[]        // resampled in original image coords (Y-down)
+  countryRawPoly: Point[] | null  // resampled Mercator poly (Y-up)
+}
+
+function mercatorY(lat: number): number {
+  return Math.log(Math.tan(Math.PI / 4 + (lat * Math.PI / 180) / 2)) * (180 / Math.PI)
+}
+
+function getLargestRing(geometry: { type: string; coordinates: number[][][][] | number[][][] }): Point[] | null {
+  const rings: number[][][] = []
+  if (geometry.type === 'Polygon') rings.push((geometry.coordinates as number[][][])[0])
+  else if (geometry.type === 'MultiPolygon') {
+    for (const poly of geometry.coordinates as number[][][][]) rings.push(poly[0])
+  }
+  if (rings.length === 0) return null
+  return rings.reduce((best, r) => r.length > best.length ? r : best) as Point[]
+}
+
+// Returns EFD reconstructions at the best-matching rotation for each country.
+// userPoly should be the raw simplified polygon (image coords); Y-flip is applied internally.
+export function getDebugShapes(userPoly: Point[], isoCodes: string[]): ShapeDebug[] {
+  const userRawPoly = resamplePolygon(userPoly, N_SAMPLES)   // image coords, Y-down
+  const normalized = flipY(userPoly)
+
+  // Pre-compute EFDs at every rotation offset (same as matchCountries)
+  const rotatedEFDs = ROTATION_OFFSETS.map(deg => ({
+    deg,
+    efd: computeEFD(resamplePolygon(rotatePolygon(normalized, deg), N_SAMPLES), N_HARMONICS),
+  }))
+
+  return isoCodes.flatMap(iso => {
+    const country = countryDescriptors.find(c => c.iso_a3 === iso)
+    if (!country) return []
+
+    // Find the rotation that best matches this country
+    let bestDist = Infinity, bestAngle = 0, bestEFD = rotatedEFDs[0].efd
+    for (const { deg, efd } of rotatedEFDs) {
+      const d = descriptorDistance(efd, country.descriptors)
+      if (d < bestDist) { bestDist = d; bestAngle = deg; bestEFD = efd }
+    }
+
+    const userEFDRecon = reconstructFromEFD(bestEFD, N_HARMONICS, 256)
+    const countryEFDRecon = reconstructFromEFD(country.descriptors, N_HARMONICS, 256)
+    const countryRawPoly = getCountryRawPoly(iso)  // Mercator coords, Y-up
+
+    return [{ iso, name: country.name, bestDist, bestAngle, userEFDRecon, countryEFDRecon, userRawPoly, countryRawPoly }]
+  })
+}
+
+// Returns the resampled + Mercator-projected polygon for a country (for raw shape overlay).
+export function getCountryRawPoly(iso: string): Point[] | null {
+  const feature = worldFeatures.get(iso) as { geometry: { type: string; coordinates: number[][][][] | number[][][] } } | undefined
+  if (!feature?.geometry) return null
+  const ring = getLargestRing(feature.geometry)
+  if (!ring) return null
+  const projected: Point[] = (ring as unknown as number[][]).map(([lon, lat]) => [lon, mercatorY(lat)])
+  return resamplePolygon(projected, N_SAMPLES)
 }

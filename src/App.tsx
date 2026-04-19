@@ -15,6 +15,7 @@ export default function App() {
   const [matches, setMatches] = useState<MatchResult[] | null>(null)
   const [maskBounds, setMaskBounds] = useState<MaskBounds | null>(null)
   const [debugPoly, setDebugPoly] = useState<Point[] | null>(null)
+  const [userPoly, setUserPoly] = useState<Point[] | null>(null)
   const [maskSize, setMaskSize] = useState<{ w: number; h: number } | null>(null)
 
   // Preload country data in the background on mount
@@ -36,6 +37,7 @@ export default function App() {
       const poly = simplifyPolygon(contour, 2)
       setMaskSize({ w: width, h: height })
       setDebugPoly(poly)
+      setUserPoly(poly)
       const results = matchCountries(poly)
       setMatches(results)
     }, 0)
@@ -69,9 +71,10 @@ export default function App() {
             matches={matches}
             maskBounds={maskBounds}
             debugPoly={debugPoly}
+            userPoly={userPoly}
             maskSize={maskSize}
             photo={photo}
-            onRetake={() => { setMatches(null); setMaskBounds(null); setDebugPoly(null); setMaskSize(null); setScreen('camera') }}
+            onRetake={() => { setMatches(null); setMaskBounds(null); setDebugPoly(null); setUserPoly(null); setMaskSize(null); setScreen('camera') }}
           />
         )}
       </div>

@@ -2,9 +2,9 @@ import { useEffect, useRef, useState } from 'react'
 import { ArrowLeft, ArrowRight, MoreHorizontal } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { getFeatureByIso, getAllFeatures, type MatchResult } from '@/lib/matcher'
+import { getFeatureByIso, getAllFeatures, getDebugShapes, type MatchResult, type ShapeDebug } from '@/lib/matcher'
 import { renderCountryMap, type CityDot } from '@/lib/mapRenderer'
-import type { MaskBounds } from '@/lib/contour'
+import type { MaskBounds, Point } from '@/lib/contour'
 
 const CACHE_NAME = 'pareidomap-ml-v1'
 const BASE = import.meta.env.BASE_URL
@@ -18,10 +18,57 @@ async function loadCities(): Promise<Record<string, CityDot[]>> {
   return res.json()
 }
 
+// ── EFD shape overlay helpers ─────────────────────────────────────────────────
+
+// flipY=false: keep Y as-is (image/SVG Y-down coords).
+// flipY=true: negate Y (Mercator/EFD Y-up → SVG Y-down), default.
+function normPts(pts: Point[], size: number, flipY = true): string {
+  if (pts.length === 0) return ''
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
+  for (const [x, y] of pts) {
+    if (x < minX) minX = x; if (x > maxX) maxX = x
+    if (y < minY) minY = y; if (y > maxY) maxY = y
+  }
+  const w = maxX - minX || 1, h = maxY - minY || 1
+  const scale = (size * 0.85) / Math.max(w, h)
+  const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2
+  const sy = flipY ? -1 : 1
+  return pts.map(([x, y]) => `${(x - cx) * scale + size / 2},${sy * (y - cy) * scale + size / 2}`).join(' ')
+}
+
+function ShapeCard({ debug }: { debug: ShapeDebug }) {
+  const SIZE = 88
+  // Raw: user in image Y-down (keep y), country in Mercator Y-up (flip y) → both show north at top
+  const userRaw = normPts(debug.userRawPoly, SIZE, false)
+  const countryRaw = debug.countryRawPoly ? normPts(debug.countryRawPoly, SIZE, true) : ''
+  // EFD: both in EFD-normalized space (Y-up after flipY+EFD), flip for SVG
+  const userEFD = normPts(debug.userEFDRecon, SIZE)
+  const countryEFD = normPts(debug.countryEFDRecon, SIZE)
+  return (
+    <div className="flex flex-col items-center gap-0.5">
+      <span className="text-[8px] font-mono text-muted-foreground/60">raw</span>
+      <svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`} className="bg-muted rounded">
+        {countryRaw && <polygon points={countryRaw} fill="none" stroke="#ef4444" strokeWidth="1" strokeLinejoin="round" opacity="0.85" />}
+        <polygon points={userRaw} fill="none" stroke="#3b82f6" strokeWidth="1" strokeLinejoin="round" opacity="0.85" />
+      </svg>
+      <span className="text-[8px] font-mono text-muted-foreground/60">EFD</span>
+      <svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`} className="bg-muted rounded">
+        <polygon points={countryEFD} fill="none" stroke="#ef4444" strokeWidth="1" strokeLinejoin="round" opacity="0.85" />
+        <polygon points={userEFD} fill="none" stroke="#3b82f6" strokeWidth="1" strokeLinejoin="round" opacity="0.85" />
+      </svg>
+      <span className="text-[9px] font-mono text-muted-foreground truncate max-w-[88px] text-center">{debug.name}</span>
+      <span className="text-[9px] font-mono text-[#002FA7]">d={debug.bestDist.toFixed(3)} @{debug.bestAngle}°</span>
+    </div>
+  )
+}
+
+// ── Result screen ─────────────────────────────────────────────────────────────
+
 export function Result({
   matches,
   maskBounds,
   debugPoly,
+  userPoly,
   maskSize,
   photo,
   onRetake,
@@ -29,12 +76,15 @@ export function Result({
   matches: MatchResult[] | null
   maskBounds: MaskBounds | null
   debugPoly: [number, number][] | null
+  userPoly: Point[] | null
   maskSize: { w: number; h: number } | null
   photo: string | null
   onRetake: () => void
 }) {
   const [activeIndex, setActiveIndex] = useState(0)
   const [cities, setCities] = useState<Record<string, CityDot[]>>({})
+  const [showDebug, setShowDebug] = useState(false)
+  const [debugShapes, setDebugShapes] = useState<ShapeDebug[] | null>(null)
   const svgRef = useRef<SVGSVGElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
 
@@ -87,6 +137,14 @@ export function Result({
 
   const loading = !matches
 
+  function handleToggleDebug() {
+    if (!matches || !userPoly) return
+    if (!showDebug && !debugShapes) {
+      setDebugShapes(getDebugShapes(userPoly, matches.slice(0, 8).map(m => m.iso_a3)))
+    }
+    setShowDebug(v => !v)
+  }
+
   return (
     <div className="flex flex-col min-h-screen">
       {/* Nav bar */}
@@ -105,7 +163,13 @@ export function Result({
             </div>
           )}
         </div>
-        <button className="w-9 h-9 rounded-[10px] border border-border flex items-center justify-center">
+        <button
+          onClick={handleToggleDebug}
+          className={cn(
+            'w-9 h-9 rounded-[10px] border flex items-center justify-center',
+            showDebug ? 'border-[#002FA7] text-[#002FA7]' : 'border-border',
+          )}
+        >
           <MoreHorizontal className="w-4 h-4" />
         </button>
       </div>
@@ -210,6 +274,20 @@ export function Result({
             >
               <ArrowRight className="w-4 h-4" />
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Debug panel — EFD reconstructions at rotation 0° */}
+      {showDebug && debugShapes && (
+        <div className="mx-4 mt-3 rounded-[14px] border border-border p-4">
+          <div className="text-[10px] font-mono text-muted-foreground tracking-widest uppercase mb-3">
+            EFD debug — rotation 0° &nbsp;
+            <span className="text-blue-500">■</span> user &nbsp;
+            <span className="text-red-500">■</span> country
+          </div>
+          <div className="grid grid-cols-4 gap-3">
+            {debugShapes.map(d => <ShapeCard key={d.iso} debug={d} />)}
           </div>
         </div>
       )}

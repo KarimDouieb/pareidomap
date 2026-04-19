@@ -122,3 +122,24 @@ export function descriptorDistance(a: Float32Array | number[], b: Float32Array |
   for (let i = 0; i < a.length; i++) sum += (a[i] - b[i]) ** 2
   return Math.sqrt(sum)
 }
+
+// ── Reconstruct polygon from EFD coefficients (for visualization / debug) ─────
+// Returns nPoints samples of the shape in normalized EFD space (centered at origin).
+export function reconstructFromEFD(
+  coeffs: Float32Array | number[],
+  harmonics: number,
+  nPoints: number,
+): Point[] {
+  const pts: Point[] = []
+  for (let i = 0; i < nPoints; i++) {
+    const t = (i / nPoints) * 2 * Math.PI
+    let x = 0, y = 0
+    for (let h = 1; h <= harmonics; h++) {
+      const angle = h * t
+      x += coeffs[(h - 1) * 4 + 0] * Math.cos(angle) + coeffs[(h - 1) * 4 + 1] * Math.sin(angle)
+      y += coeffs[(h - 1) * 4 + 2] * Math.cos(angle) + coeffs[(h - 1) * 4 + 3] * Math.sin(angle)
+    }
+    pts.push([x, y])
+  }
+  return pts
+}
