@@ -49,7 +49,24 @@ export function renderCountryMap(
   const [[bx0, by0], [bx1, by1]] = tempPathGen.bounds(mainlandFeature as GeoPermissibleObjects)
   const countryCx = (bx0 + bx1) / 2
   const countryCy = (by0 + by1) / 2
-  const countryMaxDim = Math.max(bx1 - bx0, by1 - by0)
+
+  // Compute bounding box of the ROTATED mainland polygon so scale matches
+  // what normPts sees after rotation in the debug panel.
+  const rad = bestAngle * Math.PI / 180
+  const cosA = Math.cos(rad), sinA = Math.sin(rad)
+  let minRX = Infinity, maxRX = -Infinity, minRY = Infinity, maxRY = -Infinity
+  for (const coords of mainlandRing) {
+    const pt = tempProj(coords as [number, number])
+    if (!pt) continue
+    const dx = pt[0] - countryCx, dy = pt[1] - countryCy
+    const rx = dx * cosA - dy * sinA
+    const ry = dx * sinA + dy * cosA
+    if (rx < minRX) minRX = rx; if (rx > maxRX) maxRX = rx
+    if (ry < minRY) minRY = ry; if (ry > maxRY) maxRY = ry
+  }
+  const countryMaxDim = (maxRX > minRX)
+    ? Math.max(maxRX - minRX, maxRY - minRY)
+    : Math.max(bx1 - bx0, by1 - by0)
 
   // ── Compute SVG-space transform ─────────────────────────────────────────────
   let transform: string
@@ -65,7 +82,6 @@ export function renderCountryMap(
     const cy = maskBounds.normCy * imgH * coverScale + offsetY
     const maskMaxDim = Math.max(maskBounds.normW * imgW, maskBounds.normH * imgH) * coverScale
     const scale = maskMaxDim / countryMaxDim
-    // bestAngle is rotation in Y-up EFD space; Y-down (SVG) flips the sign, so we use +bestAngle here.
     transform = `translate(${cx},${cy}) rotate(${bestAngle}) scale(${scale}) translate(${-countryCx},${-countryCy})`
   } else {
     // Fallback: fit to frame
