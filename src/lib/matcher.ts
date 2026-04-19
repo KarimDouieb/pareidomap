@@ -86,5 +86,5 @@ export function matchCountries(poly: Point[]): MatchResult[] {
     return { iso_a3: country.iso_a3, name: country.name, subregion: country.subregion, continent: country.continent, score, bestAngle }
   })
 
-  return scored.sort((a, b) => b.score - a.score).slice(0, 5)
+  return scored.sort((a, b) => b.score - a.score).slice(0, 15)
 }
