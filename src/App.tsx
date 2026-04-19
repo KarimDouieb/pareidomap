@@ -17,7 +17,7 @@ export default function App() {
   const [debugPoly, setDebugPoly] = useState<Point[] | null>(null)
   const [userPoly, setUserPoly] = useState<Point[] | null>(null)
   const [maskSize, setMaskSize] = useState<{ w: number; h: number } | null>(null)
-  const [metric, setMetric] = useState<DistanceMetric>('weighted')
+  const [metric, setMetric] = useState<DistanceMetric>('chamfer')
 
   // Preload country data in the background on mount
   useEffect(() => { loadCountryData().catch(() => {}) }, [])

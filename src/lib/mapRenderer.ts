@@ -30,8 +30,7 @@ export function renderCountryMap(
   const tempProj = geoMercator().fitSize([REF, REF], feature as GeoPermissibleObjects)
   const tempPathGen = geoPath(tempProj)
   const [[bx0, by0], [bx1, by1]] = tempPathGen.bounds(feature as GeoPermissibleObjects)
-  const countryCx = (bx0 + bx1) / 2
-  const countryCy = (by0 + by1) / 2
+  const [countryCx, countryCy] = tempPathGen.centroid(feature as GeoPermissibleObjects)
   const countryDiag = Math.sqrt((bx1 - bx0) ** 2 + (by1 - by0) ** 2)
 
   // ── Compute SVG-space transform ─────────────────────────────────────────────
@@ -43,7 +42,8 @@ export function renderCountryMap(
     const scale = (maskDiag * 1.1) / countryDiag  // slight padding factor
     // SVG transforms apply right-to-left:
     // 1. center country at origin, 2. scale, 3. rotate, 4. move to mask centroid
-    transform = `translate(${cx},${cy}) rotate(${-bestAngle}) scale(${scale}) translate(${-countryCx},${-countryCy})`
+    // bestAngle is rotation in Y-up EFD space; Y-down (SVG) flips the sign, so we use +bestAngle here.
+    transform = `translate(${cx},${cy}) rotate(${bestAngle}) scale(${scale}) translate(${-countryCx},${-countryCy})`
   } else {
     // Fallback: fit to frame
     const proj = geoMercator().fitExtent([[40, 40], [width - 40, height - 40]], feature as GeoPermissibleObjects)

@@ -38,23 +38,14 @@ function normPts(pts: Point[], size: number, flipY = true): string {
 
 function ShapeCard({ debug }: { debug: ShapeDebug }) {
   const SIZE = 88
-  // Raw: user in image Y-down (keep y), country in Mercator Y-up (flip y) → both show north at top
-  const userRaw = normPts(debug.userRawPoly, SIZE, false)
+  // Both in Mercator Y-up space → flip for SVG Y-down
+  const userRaw = normPts(debug.userRawPoly, SIZE, true)
   const countryRaw = debug.countryRawPoly ? normPts(debug.countryRawPoly, SIZE, true) : ''
-  // EFD: both in EFD-normalized space (Y-up after flipY+EFD), flip for SVG
-  const userEFD = normPts(debug.userEFDRecon, SIZE)
-  const countryEFD = normPts(debug.countryEFDRecon, SIZE)
   return (
     <div className="flex flex-col items-center gap-0.5">
-      <span className="text-[8px] font-mono text-muted-foreground/60">raw</span>
       <svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`} className="bg-muted rounded">
         {countryRaw && <polygon points={countryRaw} fill="none" stroke="#ef4444" strokeWidth="1" strokeLinejoin="round" opacity="0.85" />}
         <polygon points={userRaw} fill="none" stroke="#3b82f6" strokeWidth="1" strokeLinejoin="round" opacity="0.85" />
-      </svg>
-      <span className="text-[8px] font-mono text-muted-foreground/60">EFD</span>
-      <svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`} className="bg-muted rounded">
-        <polygon points={countryEFD} fill="none" stroke="#ef4444" strokeWidth="1" strokeLinejoin="round" opacity="0.85" />
-        <polygon points={userEFD} fill="none" stroke="#3b82f6" strokeWidth="1" strokeLinejoin="round" opacity="0.85" />
       </svg>
       <span className="text-[9px] font-mono text-muted-foreground truncate max-w-[88px] text-center">{debug.name}</span>
       <span className="text-[9px] font-mono text-[#002FA7]">d={debug.bestDist.toFixed(3)} @{debug.bestAngle}°</span>

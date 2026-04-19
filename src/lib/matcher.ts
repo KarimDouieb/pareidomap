@@ -1,5 +1,5 @@
 import type { Point } from './contour'
-import { resamplePolygon, computeEFD, rotatePolygon, normalizePoly, descriptorDistance, geometricPolyDistance, reconstructFromEFD, type DistanceMetric } from './descriptor'
+import { resamplePolygon, computeEFD, rotatePolygon, normalizePoly, descriptorDistance, geometricPolyDistance, type DistanceMetric } from './descriptor'
 
 export type { DistanceMetric }
 
@@ -62,7 +62,7 @@ export function getAllFeatures(): object[] {
   return Array.from(worldFeatures.values())
 }
 
-const ROTATION_OFFSETS = [-45, -30, -15, 0, 15, 30, 45]
+const ROTATION_OFFSETS = Array.from({ length: 71 }, (_, i) => i - 35)
 const N_SAMPLES = 512
 const N_HARMONICS = 128
 const GEO_N = 128
@@ -142,10 +142,8 @@ export interface ShapeDebug {
   name: string
   bestDist: number
   bestAngle: number
-  userEFDRecon: Point[]   // user EFD reconstructed at best rotation
-  countryEFDRecon: Point[]
-  userRawPoly: Point[]        // resampled in original image coords (Y-down)
-  countryRawPoly: Point[] | null  // resampled Mercator poly (Y-up)
+  userRawPoly: Point[]           // user poly in Mercator Y-up (no rotation)
+  countryRawPoly: Point[] | null // country rotated by -bestAngle in Mercator Y-up to align with user
 }
 
 function mercatorY(lat: number): number {
@@ -165,7 +163,6 @@ function getLargestRing(geometry: { type: string; coordinates: number[][][][] | 
 // Returns EFD reconstructions at the best-matching rotation for each country.
 // userPoly should be the raw simplified polygon (image coords); Y-flip is applied internally.
 export function getDebugShapes(userPoly: Point[], isoCodes: string[], metric: DistanceMetric = 'weighted'): ShapeDebug[] {
-  const userRawPoly = resamplePolygon(userPoly, N_SAMPLES)   // image coords, Y-down
   const normalized = flipY(userPoly)
 
   // Pre-compute per-rotation data for the chosen metric
@@ -203,17 +200,11 @@ export function getDebugShapes(userPoly: Point[], isoCodes: string[], metric: Di
       }
     }
 
-    // Viz EFD: scale-norm only (no phase rotation) so shapes look like the actual polygon
-    const userVizEFD = computeEFD(resamplePolygon(rotatePolygon(normalized, bestAngle), N_SAMPLES), N_HARMONICS, false)
-    const countryRawPoly = getCountryRawPoly(iso)  // Mercator coords, Y-up
-    const countryVizEFD = countryRawPoly
-      ? computeEFD(countryRawPoly, N_HARMONICS, false)
-      : null
+    const userRawPoly = resamplePolygon(normalized, N_SAMPLES)  // Mercator Y-up, no rotation
+    const countryBase = getCountryRawPoly(iso)
+    const countryRawPoly = countryBase ? resamplePolygon(rotatePolygon(countryBase, -bestAngle), N_SAMPLES) : null
 
-    const userEFDRecon = reconstructFromEFD(userVizEFD, N_HARMONICS, 256)
-    const countryEFDRecon = countryVizEFD ? reconstructFromEFD(countryVizEFD, N_HARMONICS, 256) : []
-
-    return [{ iso, name: country.name, bestDist, bestAngle, userEFDRecon, countryEFDRecon, userRawPoly, countryRawPoly }]
+    return [{ iso, name: country.name, bestDist, bestAngle, userRawPoly, countryRawPoly }]
   })
 }
 
