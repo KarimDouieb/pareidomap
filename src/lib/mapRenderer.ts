@@ -70,6 +70,7 @@ export function renderCountryMap(
 
   // ── Compute SVG-space transform ─────────────────────────────────────────────
   let transform: string
+  let maskCx = width / 2, maskCy = height / 2, overlayScale = 1
   if (maskBounds && countryMaxDim > 0) {
     // Apply object-cover transform: mask coords are in natural image space,
     // but the photo is displayed with object-cover in the container.
@@ -78,11 +79,11 @@ export function renderCountryMap(
     const coverScale = Math.max(width / imgW, height / imgH)
     const offsetX = (width - imgW * coverScale) / 2
     const offsetY = (height - imgH * coverScale) / 2
-    const cx = maskBounds.normCx * imgW * coverScale + offsetX
-    const cy = maskBounds.normCy * imgH * coverScale + offsetY
+    maskCx = maskBounds.normCx * imgW * coverScale + offsetX
+    maskCy = maskBounds.normCy * imgH * coverScale + offsetY
     const maskMaxDim = Math.max(maskBounds.normW * imgW, maskBounds.normH * imgH) * coverScale
-    const scale = maskMaxDim / countryMaxDim
-    transform = `translate(${cx},${cy}) rotate(${bestAngle}) scale(${scale}) translate(${-countryCx},${-countryCy})`
+    overlayScale = maskMaxDim / countryMaxDim
+    transform = `translate(${maskCx},${maskCy}) rotate(${bestAngle}) scale(${overlayScale}) translate(${-countryCx},${-countryCy})`
   } else {
     // Fallback: fit to frame
     const proj = geoMercator().fitExtent([[40, 40], [width - 40, height - 40]], feature as GeoPermissibleObjects)
@@ -128,25 +129,34 @@ export function renderCountryMap(
     .attr('stroke-linejoin', 'round')
     .attr('filter', 'drop-shadow(0 0 4px rgba(0,0,0,0.9))')
 
-  // Cities — project to 1000-space, then let the group transform position them
+  // Cities — compute container-space coords by manually applying the SVG transform,
+  // then render in an un-rotated group so labels stay horizontal.
+  // font/dot size: overlayScale converts 1000-space → screen pixels, then
+  // countryMaxDim/cityDiag scales for how much of the frame the country fills.
+  const cityDiag = maskBounds
+    ? Math.sqrt((maskBounds.normW * width) ** 2 + (maskBounds.normH * height) ** 2) * 1.1
+    : REF
+  const textScale = overlayScale * countryMaxDim / (cityDiag || 1)
+  const cityG = svg.append('g')
   for (const city of cities) {
-    const coords = tempProj([city.lon, city.lat])
-    if (!coords) continue
-    const [cx, cy] = coords
+    const projected = tempProj([city.lon, city.lat])
+    if (!projected) continue
+    const dx = (projected[0] - countryCx) * overlayScale
+    const dy = (projected[1] - countryCy) * overlayScale
+    const px = maskCx + dx * cosA - dy * sinA
+    const py = maskCy + dx * sinA + dy * cosA
 
     if (city.capital) {
-      g.append('circle').attr('cx', cx).attr('cy', cy).attr('r', 8)
-        .attr('fill', 'none').attr('stroke', 'white').attr('stroke-width', 1.2)
+      cityG.append('circle').attr('cx', px).attr('cy', py).attr('r', 8 * textScale)
+        .attr('fill', 'none').attr('stroke', 'white').attr('stroke-width', 1.2 * textScale)
     }
-    g.append('circle').attr('cx', cx).attr('cy', cy).attr('r', city.capital ? 4 : 3)
+    cityG.append('circle').attr('cx', px).attr('cy', py).attr('r', (city.capital ? 4 : 3) * textScale)
       .attr('fill', 'white').attr('opacity', 0.9)
 
-    // Scale text inversely so it reads at a constant size regardless of zoom
-    const scale = countryMaxDim / ((maskBounds ? Math.sqrt((maskBounds.normW * width) ** 2 + (maskBounds.normH * height) ** 2) * 1.1 : REF))
-    g.append('text')
-      .attr('x', cx + 10 * scale).attr('y', cy + 4 * scale)
+    cityG.append('text')
+      .attr('x', px + 10 * textScale).attr('y', py + 4 * textScale)
       .attr('font-family', 'Geist, sans-serif')
-      .attr('font-size', (city.capital ? 11 : 9) * scale)
+      .attr('font-size', (city.capital ? 11 : 9) * textScale)
       .attr('font-weight', city.capital ? '500' : '400')
       .attr('fill', 'white').attr('opacity', 0.9)
       .attr('filter', 'drop-shadow(0 1px 2px rgba(0,0,0,0.9))')
