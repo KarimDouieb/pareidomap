@@ -21,11 +21,15 @@ async function loadCities(): Promise<Record<string, CityDot[]>> {
 export function Result({
   matches,
   maskBounds,
+  debugPoly,
+  maskSize,
   photo,
   onRetake,
 }: {
   matches: MatchResult[] | null
   maskBounds: MaskBounds | null
+  debugPoly: [number, number][] | null
+  maskSize: { w: number; h: number } | null
   photo: string | null
   onRetake: () => void
 }) {
@@ -124,6 +128,23 @@ export function Result({
             </div>
           ) : (
             <svg ref={svgRef} className="absolute inset-0 w-full h-full" />
+          )}
+          {/* Debug polygon overlay — viewBox matches natural image dims, slice = object-cover */}
+          {debugPoly && debugPoly.length > 1 && maskSize && (
+            <svg
+              className="absolute inset-0 w-full h-full"
+              viewBox={`0 0 ${maskSize.w} ${maskSize.h}`}
+              preserveAspectRatio="xMidYMid slice"
+            >
+              <polygon
+                points={debugPoly.map(([x, y]) => `${x},${y}`).join(' ')}
+                fill="none"
+                stroke="#00ff88"
+                strokeWidth={maskSize.w * 0.003}
+                strokeLinejoin="round"
+                opacity="0.8"
+              />
+            </svg>
           )}
         </div>
       </div>
