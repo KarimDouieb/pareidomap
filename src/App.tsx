@@ -4,7 +4,7 @@ import { Camera } from '@/screens/Camera'
 import { Preview } from '@/screens/Preview'
 import { Trace, type TraceContinuePayload } from '@/screens/Trace'
 import { Result } from '@/screens/Result'
-import { loadCountryData, matchCountries, type MatchResult } from '@/lib/matcher'
+import { loadCountryData, matchCountries, type MatchResult, type DistanceMetric } from '@/lib/matcher'
 import { extractLargestBlob, traceContour, simplifyPolygon, getMaskBounds, type MaskBounds, type Point } from '@/lib/contour'
 
 type Screen = 'onboarding' | 'camera' | 'preview' | 'trace' | 'result'
@@ -17,6 +17,7 @@ export default function App() {
   const [debugPoly, setDebugPoly] = useState<Point[] | null>(null)
   const [userPoly, setUserPoly] = useState<Point[] | null>(null)
   const [maskSize, setMaskSize] = useState<{ w: number; h: number } | null>(null)
+  const [metric, setMetric] = useState<DistanceMetric>('weighted')
 
   // Preload country data in the background on mount
   useEffect(() => { loadCountryData().catch(() => {}) }, [])
@@ -38,7 +39,7 @@ export default function App() {
       setMaskSize({ w: width, h: height })
       setDebugPoly(poly)
       setUserPoly(poly)
-      const results = matchCountries(poly)
+      const results = matchCountries(poly, metric)
       setMatches(results)
     }, 0)
   }
@@ -74,6 +75,11 @@ export default function App() {
             userPoly={userPoly}
             maskSize={maskSize}
             photo={photo}
+            metric={metric}
+            onMetricChange={m => {
+              setMetric(m)
+              if (userPoly) setTimeout(() => setMatches(matchCountries(userPoly, m)), 0)
+            }}
             onRetake={() => { setMatches(null); setMaskBounds(null); setDebugPoly(null); setUserPoly(null); setMaskSize(null); setScreen('camera') }}
           />
         )}

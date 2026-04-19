@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { ArrowLeft, ArrowRight, MoreHorizontal } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { getFeatureByIso, getAllFeatures, getDebugShapes, type MatchResult, type ShapeDebug } from '@/lib/matcher'
+import { getFeatureByIso, getAllFeatures, getDebugShapes, type MatchResult, type ShapeDebug, type DistanceMetric } from '@/lib/matcher'
 import { renderCountryMap, type CityDot } from '@/lib/mapRenderer'
 import type { MaskBounds, Point } from '@/lib/contour'
 
@@ -64,6 +64,14 @@ function ShapeCard({ debug }: { debug: ShapeDebug }) {
 
 // ── Result screen ─────────────────────────────────────────────────────────────
 
+const METRICS: { value: DistanceMetric; label: string }[] = [
+  { value: 'weighted',  label: '1/h²' },
+  { value: 'chamfer',   label: 'chamfer' },
+  { value: 'hausdorff', label: 'hausdorff' },
+  { value: 'frechet',   label: 'fréchet' },
+  { value: 'turning',   label: 'turning' },
+]
+
 export function Result({
   matches,
   maskBounds,
@@ -71,6 +79,8 @@ export function Result({
   userPoly,
   maskSize,
   photo,
+  metric,
+  onMetricChange,
   onRetake,
 }: {
   matches: MatchResult[] | null
@@ -79,6 +89,8 @@ export function Result({
   userPoly: Point[] | null
   maskSize: { w: number; h: number } | null
   photo: string | null
+  metric: DistanceMetric
+  onMetricChange: (m: DistanceMetric) => void
   onRetake: () => void
 }) {
   const [activeIndex, setActiveIndex] = useState(0)
@@ -140,9 +152,14 @@ export function Result({
   function handleToggleDebug() {
     if (!matches || !userPoly) return
     if (!showDebug && !debugShapes) {
-      setDebugShapes(getDebugShapes(userPoly, matches.slice(0, 8).map(m => m.iso_a3)))
+      setDebugShapes(getDebugShapes(userPoly, matches.slice(0, 50).map(m => m.iso_a3), metric))
     }
     setShowDebug(v => !v)
+  }
+
+  function handleMetricChange(m: DistanceMetric) {
+    onMetricChange(m)
+    setDebugShapes(null) // invalidate debug cache so it recomputes with new metric
   }
 
   return (
@@ -281,10 +298,28 @@ export function Result({
       {/* Debug panel — EFD reconstructions at rotation 0° */}
       {showDebug && debugShapes && (
         <div className="mx-4 mt-3 rounded-[14px] border border-border p-4">
-          <div className="text-[10px] font-mono text-muted-foreground tracking-widest uppercase mb-3">
-            EFD debug — rotation 0° &nbsp;
-            <span className="text-blue-500">■</span> user &nbsp;
-            <span className="text-red-500">■</span> country
+          <div className="flex items-center justify-between mb-3">
+            <div className="text-[10px] font-mono text-muted-foreground tracking-widest uppercase">
+              EFD debug &nbsp;
+              <span className="text-blue-500">■</span> user &nbsp;
+              <span className="text-red-500">■</span> country
+            </div>
+            <div className="flex gap-1">
+              {METRICS.map(({ value, label }) => (
+                <button
+                  key={value}
+                  onClick={() => handleMetricChange(value)}
+                  className={cn(
+                    'px-2 py-0.5 rounded text-[9px] font-mono border transition-colors',
+                    metric === value
+                      ? 'bg-[#002FA7] text-white border-[#002FA7]'
+                      : 'border-border text-muted-foreground',
+                  )}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
           </div>
           <div className="grid grid-cols-4 gap-3">
             {debugShapes.map(d => <ShapeCard key={d.iso} debug={d} />)}
