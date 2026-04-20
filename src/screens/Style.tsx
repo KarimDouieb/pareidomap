@@ -3,9 +3,9 @@ import { ArrowLeft, Share2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
-import { getFeatureByIso, getAllFeatures } from '@/lib/matcher'
+import { getFeatureByIso, getAllFeatures, type MatchResult } from '@/lib/matcher'
 import {
-  renderStylePreview,
+  renderCountryMap,
   DEFAULT_MAP_STYLE,
   BORDER_COLORS,
   SUB_BORDER_COLORS,
@@ -13,37 +13,10 @@ import {
   type FontStyle,
   type CityDot,
 } from '@/lib/mapRenderer'
-import type { MatchResult } from '@/lib/matcher'
-
-const CACHE_NAME = 'pareidomap-data-v1'
-const BASE = import.meta.env.BASE_URL
-
-async function loadCities(): Promise<Record<string, CityDot[]>> {
-  const cache = await caches.open(CACHE_NAME)
-  const url = `${BASE}countryTopCities.json`
-  const hit = await cache.match(url)
-  const res = hit ?? await fetch(url)
-  if (!hit) await cache.put(url, res.clone())
-
-  const raw = await res.json() as Record<string, Array<{
-    city: string; lat: number; lng: number
-    capital: string | null; population: number | null
-  }>>
-
-  const result: Record<string, CityDot[]> = {}
-  for (const [iso3, cityList] of Object.entries(raw)) {
-    const capital = cityList.find(c => c.capital === 'primary')
-    const topTwo = cityList
-      .filter(c => c.capital !== 'primary' && c.population != null)
-      .sort((a, b) => (b.population ?? 0) - (a.population ?? 0))
-      .slice(0, 2)
-    result[iso3] = [
-      ...(capital ? [{ name: capital.city, lon: capital.lng, lat: capital.lat, capital: true }] : []),
-      ...topTwo.map(c => ({ name: c.city, lon: c.lng, lat: c.lat, capital: false })),
-    ]
-  }
-  return result
-}
+import { loadCities } from '@/lib/cities'
+import { computeLayout } from '@/lib/layout'
+import { PhotoMapCanvas } from '@/components/PhotoMapCanvas'
+import type { MaskBounds } from '@/lib/contour'
 
 const TOGGLE_ROWS: { key: keyof Pick<MapStyle, 'showCities' | 'showBorders' | 'showNeighbors'>; label: string }[] = [
   { key: 'showCities', label: 'Capital & cities' },
@@ -60,46 +33,40 @@ const FONTS: { value: FontStyle; label: string }[] = [
 
 export function Style({
   match,
+  photo,
+  maskBounds,
+  maskSize,
   onBack,
 }: {
   match: MatchResult
+  photo: string | null
+  maskBounds: MaskBounds | null
+  maskSize: { w: number; h: number } | null
   onBack: () => void
 }) {
   const svgRef = useRef<SVGSVGElement>(null)
-  const containerRef = useRef<HTMLDivElement>(null)
   const [cities, setCities] = useState<Record<string, CityDot[]>>({})
   const [mapStyle, setMapStyle] = useState<MapStyle>(DEFAULT_MAP_STYLE)
+  const [containerSize, setContainerSize] = useState<{ w: number; h: number } | null>(null)
 
   useEffect(() => {
     loadCities().then(setCities).catch(() => {})
   }, [])
 
-  useEffect(() => {
+  function renderMap(w: number, h: number) {
     const svg = svgRef.current
-    const container = containerRef.current
-    if (!svg || !container) return
+    if (!svg) return
     const feature = getFeatureByIso(match.iso_a3)
     if (!feature) return
-    const { offsetWidth: w, offsetHeight: h } = container
-    if (w <= 0 || h <= 0) return
-    renderStylePreview(svg, feature, cities[match.iso_a3] ?? [], w, h, getAllFeatures(), match.name, mapStyle)
-  }, [match, cities, mapStyle])
+    const vs = maskBounds && maskSize ? computeLayout(w, h, maskBounds, maskSize).vertShift : 0
+    renderCountryMap(svg, feature, cities[match.iso_a3] ?? [], w, h, maskBounds, match.bestAngle, getAllFeatures(), maskSize ?? undefined, match.name, vs, mapStyle)
+  }
 
   useEffect(() => {
-    const container = containerRef.current
-    if (!container) return
-    const ro = new ResizeObserver(() => {
-      const svg = svgRef.current
-      if (!svg) return
-      const { offsetWidth: w, offsetHeight: h } = container
-      if (w <= 0 || h <= 0) return
-      const feature = getFeatureByIso(match.iso_a3)
-      if (!feature) return
-      renderStylePreview(svg, feature, cities[match.iso_a3] ?? [], w, h, getAllFeatures(), match.name, mapStyle)
-    })
-    ro.observe(container)
-    return () => ro.disconnect()
-  }, [match, cities, mapStyle])
+    if (!containerSize) return
+    renderMap(containerSize.w, containerSize.h)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cities, maskBounds, maskSize, containerSize, mapStyle])
 
   function update(patch: Partial<MapStyle>) {
     setMapStyle(s => ({ ...s, ...patch }))
@@ -126,13 +93,13 @@ export function Style({
 
       {/* Map preview */}
       <div className="px-4">
-        <div
-          ref={containerRef}
-          className="w-full rounded-[14px] overflow-hidden relative"
-          style={{ aspectRatio: '4/3' }}
-        >
-          <svg ref={svgRef} className="absolute inset-0 w-full h-full" />
-        </div>
+        <PhotoMapCanvas
+          photo={photo}
+          maskBounds={maskBounds}
+          maskSize={maskSize}
+          svgRef={svgRef}
+          onResize={(w, h) => setContainerSize({ w, h })}
+        />
       </div>
 
       {/* Controls */}

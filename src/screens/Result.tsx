@@ -4,42 +4,11 @@ import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { getFeatureByIso, getAllFeatures, getDebugShapes, type MatchResult, type ShapeDebug } from '@/lib/matcher'
 import { renderCountryMap, type CityDot } from '@/lib/mapRenderer'
+import { loadCities } from '@/lib/cities'
+import { computeLayout } from '@/lib/layout'
+import { PhotoMapCanvas } from '@/components/PhotoMapCanvas'
 import type { MaskBounds, Point } from '@/lib/contour'
 
-const CACHE_NAME = 'pareidomap-data-v1'
-const BASE = import.meta.env.BASE_URL
-
-async function loadCities(): Promise<Record<string, CityDot[]>> {
-  const cache = await caches.open(CACHE_NAME)
-  const url = `${BASE}countryTopCities.json`
-  const hit = await cache.match(url)
-  const res = hit ?? await fetch(url)
-  if (!hit) await cache.put(url, res.clone())
-
-  const raw = await res.json() as Record<string, Array<{
-    city: string; lat: number; lng: number
-    capital: string | null; population: number | null
-  }>>
-
-  const result: Record<string, CityDot[]> = {}
-  for (const [iso3, cityList] of Object.entries(raw)) {
-    const capital = cityList.find(c => c.capital === 'primary')
-    const topTwo = cityList
-      .filter(c => c.capital !== 'primary' && c.population != null)
-      .sort((a, b) => (b.population ?? 0) - (a.population ?? 0))
-      .slice(0, 2)
-    result[iso3] = [
-      ...(capital ? [{ name: capital.city, lon: capital.lng, lat: capital.lat, capital: true }] : []),
-      ...topTwo.map(c => ({ name: c.city, lon: c.lng, lat: c.lat, capital: false })),
-    ]
-  }
-  return result
-}
-
-// ── EFD shape overlay helpers ─────────────────────────────────────────────────
-
-// flipY=false: keep Y as-is (image/SVG Y-down coords).
-// flipY=true: negate Y (Mercator/EFD Y-up → SVG Y-down), default.
 function normPts(pts: Point[], size: number, flipY = true): string {
   if (pts.length === 0) return ''
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
@@ -75,26 +44,6 @@ function ShapeCard({ debug, isSelected, onClick }: { debug: ShapeDebug; isSelect
   )
 }
 
-// ── Layout helpers ────────────────────────────────────────────────────────────
-
-function computeLayout(cW: number, cH: number, maskBounds: MaskBounds, maskSize: { w: number; h: number }) {
-  const coverScale = Math.max(cW / maskSize.w, cH / maskSize.h)
-  const scaledH = maskSize.h * coverScale
-  const defOffsetY = (cH - scaledH) / 2
-  const shapeCy = maskBounds.normCy * scaledH + defOffsetY
-  let vs = cH / 2 - shapeCy
-  vs = Math.max(defOffsetY, Math.min(-defOffsetY, vs))
-  return {
-    coverScale,
-    offsetX: (cW - maskSize.w * coverScale) / 2,
-    offsetY: defOffsetY + vs,
-    vertShift: vs,
-    objPositionY: defOffsetY !== 0 ? 50 + vs * 50 / defOffsetY : 50,
-  }
-}
-
-// ── Result screen ─────────────────────────────────────────────────────────────
-
 export function Result({
   matches,
   maskBounds,
@@ -119,12 +68,6 @@ export function Result({
   const [debugShapes, setDebugShapes] = useState<ShapeDebug[] | null>(null)
   const [containerSize, setContainerSize] = useState<{ w: number; h: number } | null>(null)
   const svgRef = useRef<SVGSVGElement>(null)
-  const containerRef = useRef<HTMLDivElement>(null)
-
-  const photoObjPositionY = useMemo(() => {
-    if (!containerSize || !maskBounds || !maskSize) return 50
-    return computeLayout(containerSize.w, containerSize.h, maskBounds, maskSize).objPositionY
-  }, [containerSize, maskBounds, maskSize])
 
   const polyTransform = useMemo(() => {
     if (!containerSize || !maskBounds || !maskSize) return null
@@ -136,48 +79,28 @@ export function Result({
     loadCities().then(setCities).catch(() => {})
   }, [])
 
-  useEffect(() => {
-    if (!matches || matches.length === 0) return
+  function renderMap(w: number, h: number) {
     const svg = svgRef.current
-    const container = containerRef.current
-    if (!svg || !container) return
-
+    if (!svg || !matches || matches.length === 0) return
     const match = matches[activeIndex]
     const feature = getFeatureByIso(match.iso_a3)
     if (!feature) return
-
-    const { offsetWidth: w, offsetHeight: h } = container
-    if (w === 0 || h === 0) return
-
     const vs = maskBounds && maskSize ? computeLayout(w, h, maskBounds, maskSize).vertShift : 0
     renderCountryMap(svg, feature, cities[match.iso_a3] ?? [], w, h, maskBounds, match.bestAngle, getAllFeatures(), maskSize ?? undefined, match.name, vs)
-  }, [matches, activeIndex, cities, maskBounds, maskSize])
+  }
 
-  // Re-render when container resizes
   useEffect(() => {
-    const container = containerRef.current
-    if (!container) return
-    const ro = new ResizeObserver(() => {
-      const { offsetWidth: w, offsetHeight: h } = container
-      if (w <= 0 || h <= 0) return
-      setContainerSize({ w, h })
-      if (!matches || matches.length === 0) return
-      const match = matches[activeIndex]
-      const feature = getFeatureByIso(match.iso_a3)
-      if (!feature || !svgRef.current) return
-      const vs = maskBounds && maskSize ? computeLayout(w, h, maskBounds, maskSize).vertShift : 0
-      renderCountryMap(svgRef.current, feature, cities[match.iso_a3] ?? [], w, h, maskBounds, match.bestAngle, getAllFeatures(), maskSize ?? undefined, match.name, vs)
-    })
-    ro.observe(container)
-    return () => ro.disconnect()
-  }, [matches, activeIndex, cities, maskBounds, maskSize])
-
-  const loading = !matches
+    if (!containerSize) return
+    renderMap(containerSize.w, containerSize.h)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [matches, activeIndex, cities, maskBounds, maskSize, containerSize])
 
   useEffect(() => {
     if (!matches || !userPoly) return
     setDebugShapes(getDebugShapes(userPoly, matches.slice(0, 320).map(m => m.iso_a3)))
   }, [matches, userPoly])
+
+  const loading = !matches
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -197,37 +120,27 @@ export function Result({
             </div>
           )}
         </div>
-        <button
-          className={cn(
-            'w-9 h-9 rounded-[10px] border flex items-center justify-center border-[#002FA7] text-[#002FA7]',
-          )}
-        >
+        <button className="w-9 h-9 rounded-[10px] border flex items-center justify-center border-[#002FA7] text-[#002FA7]">
           <MoreHorizontal className="w-4 h-4" />
         </button>
       </div>
 
       {/* Map area */}
       <div className="px-4">
-        <div
-          ref={containerRef}
-          className="w-full rounded-[14px] overflow-hidden relative"
-          style={{ aspectRatio: '4/3' }}
+        <PhotoMapCanvas
+          photo={photo}
+          maskBounds={maskBounds}
+          maskSize={maskSize}
+          svgRef={svgRef}
+          onResize={(w, h) => setContainerSize({ w, h })}
         >
-          {/* Photo background */}
-          {photo && (
-            <img src={photo} alt="captured" className="absolute inset-0 w-full h-full object-cover" style={{ objectPosition: `50% ${photoObjPositionY}%` }} />
-          )}
-          {/* D3 overlay */}
-          {loading ? (
+          {loading && (
             <div className="absolute inset-0 flex items-center justify-center bg-black/20">
               <div className="w-8 h-8 rounded-full border-2 border-white border-t-transparent animate-spin opacity-80" />
             </div>
-          ) : (
-            <svg ref={svgRef} className="absolute inset-0 w-full h-full" />
           )}
-          {/* Debug polygon overlay */}
           {debugPoly && debugPoly.length > 1 && maskSize && polyTransform && (
-            <svg className="absolute inset-0 w-full h-full">
+            <svg className="absolute inset-0 w-full h-full pointer-events-none">
               <g transform={`translate(${polyTransform.offsetX}, ${polyTransform.offsetY}) scale(${polyTransform.coverScale})`}>
                 <polygon
                   points={debugPoly.map(([x, y]) => `${x},${y}`).join(' ')}
@@ -240,7 +153,7 @@ export function Result({
               </g>
             </svg>
           )}
-        </div>
+        </PhotoMapCanvas>
       </div>
 
       {/* Score card */}
@@ -270,7 +183,6 @@ export function Result({
             </div>
           </div>
 
-          {/* Navigation */}
           <div className="flex items-center justify-between mt-3">
             <button
               onClick={() => setActiveIndex(i => Math.max(0, i - 1))}
@@ -297,7 +209,7 @@ export function Result({
         </div>
       )}
 
-      { debugShapes && (
+      {debugShapes && (
         <div className="mx-4 mt-3 rounded-[14px] border border-border p-4">
           <div className="text-[10px] font-mono text-muted-foreground tracking-widest uppercase mb-3">
             Best Matches &nbsp;
@@ -305,7 +217,7 @@ export function Result({
             <span className="text-red-500">■</span> country
           </div>
           <div className="grid grid-cols-4 gap-3">
-            {debugShapes?.map(d => (
+            {debugShapes.map(d => (
               <ShapeCard
                 key={d.iso}
                 debug={d}
@@ -320,7 +232,6 @@ export function Result({
         </div>
       )}
 
-      {/* Action buttons */}
       <div className="flex gap-3 px-4 pb-8 pt-4 mt-auto">
         <Button variant="outline" className="flex-1" onClick={onRetake}>
           Retake

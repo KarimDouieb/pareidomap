@@ -54,7 +54,10 @@ export function renderCountryMap(
   maskSize: { w: number; h: number } | null = null,
   countryName = '',
   verticalShift = 0,
+  style: MapStyle | null = null,
 ): void {
+  const s = style ?? DEFAULT_MAP_STYLE
+  const fontFamily = FONT_FAMILIES[s.font]
   const svg = select(svgEl)
   svg.selectAll('*').remove()
   svg.attr('viewBox', `0 0 ${width} ${height}`)
@@ -124,10 +127,12 @@ export function renderCountryMap(
     const g = svg.append('g')
     g.append('path').datum(feature as GeoPermissibleObjects).attr('d', d => pathGen(d))
       .attr('fill', 'rgba(0,0,0,0.2)').attr('stroke', 'none')
-    g.append('path').datum(feature as GeoPermissibleObjects).attr('d', d => pathGen(d))
-      .attr('fill', 'none').attr('stroke', 'white').attr('stroke-width', 2)
-      .attr('stroke-linejoin', 'round').attr('filter', 'drop-shadow(0 0 4px rgba(0,0,0,0.9))')
-    renderCities(svg, cities, proj)
+    if (s.showBorders) {
+      g.append('path').datum(feature as GeoPermissibleObjects).attr('d', d => pathGen(d))
+        .attr('fill', 'none').attr('stroke', s.borderColor).attr('stroke-width', 2)
+        .attr('stroke-linejoin', 'round').attr('filter', 'drop-shadow(0 0 4px rgba(0,0,0,0.9))')
+    }
+    if (s.showCities) renderCities(svg, cities, proj, fontFamily, s.borderColor)
     renderBadge(svg)
     return
   }
@@ -136,15 +141,18 @@ export function renderCountryMap(
   // All geometry lives in the 1000-space and is positioned via the group transform
   const g = svg.append('g').attr('transform', transform)
 
+  const strokeScale = 1 / ((maskBounds ? Math.sqrt((maskBounds.normW * width) ** 2 + (maskBounds.normH * height) ** 2) : REF) / countryMaxDim)
+
   // World background: all countries using the same projection for geographic context
-  if (allFeatures.length > 0) {
+  if (s.showNeighbors && allFeatures.length > 0) {
     const worldG = g.append('g')
     for (const f of allFeatures) {
       worldG.append('path').datum(f as GeoPermissibleObjects)
         .attr('d', d => tempPathGen(d))
         .attr('fill', 'none')
-        .attr('stroke', 'rgba(255, 255, 255, 0.33)')
-        .attr('stroke-width', 0.8 / ((maskBounds ? Math.sqrt((maskBounds.normW * width) ** 2 + (maskBounds.normH * height) ** 2) : REF) / countryMaxDim))
+        .attr('stroke', s.subBorderColor)
+        .attr('stroke-opacity', 0.33)
+        .attr('stroke-width', 0.8 * strokeScale)
         .attr('stroke-linejoin', 'round')
     }
   }
@@ -154,52 +162,54 @@ export function renderCountryMap(
     .attr('fill', 'rgba(0,0,0,0.25)')
     .attr('stroke', 'none')
 
-  g.append('path').datum(feature as GeoPermissibleObjects)
-    .attr('d', d => tempPathGen(d))
-    .attr('fill', 'none')
-    .attr('stroke', 'white')
-    .attr('stroke-width', 2 / ((maskBounds ? Math.sqrt((maskBounds.normW * width) ** 2 + (maskBounds.normH * height) ** 2) : REF) / countryMaxDim))
-    .attr('stroke-linejoin', 'round')
-    .attr('filter', 'drop-shadow(0 0 4px rgba(0,0,0,0.9))')
+  if (s.showBorders) {
+    g.append('path').datum(feature as GeoPermissibleObjects)
+      .attr('d', d => tempPathGen(d))
+      .attr('fill', 'none')
+      .attr('stroke', s.borderColor)
+      .attr('stroke-width', 2 * strokeScale)
+      .attr('stroke-linejoin', 'round')
+      .attr('filter', 'drop-shadow(0 0 4px rgba(0,0,0,0.9))')
+  }
 
   // Country name label following the medial axis of the mainland polygon
   const projectedMainland = mainlandRing
     .map(coords => tempProj(coords as [number, number]))
     .filter((p): p is [number, number] => p !== null)
-  renderCountryLabel(svg, projectedMainland, countryName, transform)
+  renderCountryLabel(svg, projectedMainland, countryName, transform, fontFamily, s.borderColor)
 
-  // Cities — compute container-space coords by manually applying the SVG transform,
-  // then render in an un-rotated group so labels stay horizontal.
-  // font/dot size: overlayScale converts 1000-space → screen pixels, then
-  // countryMaxDim/cityDiag scales for how much of the frame the country fills.
-  const cityDiag = maskBounds
-    ? Math.sqrt((maskBounds.normW * width) ** 2 + (maskBounds.normH * height) ** 2) * 1.1
-    : REF
-  const textScale = overlayScale * countryMaxDim / (cityDiag || 1)
-  const cityG = svg.append('g')
-  for (const city of cities) {
-    const projected = tempProj([city.lon, city.lat])
-    if (!projected) continue
-    const dx = (projected[0] - countryCx) * overlayScale
-    const dy = (projected[1] - countryCy) * overlayScale
-    const px = maskCx + dx * cosA - dy * sinA
-    const py = maskCy + dx * sinA + dy * cosA
+  if (s.showCities) {
+    // Cities — compute container-space coords by manually applying the SVG transform,
+    // then render in an un-rotated group so labels stay horizontal.
+    const cityDiag = maskBounds
+      ? Math.sqrt((maskBounds.normW * width) ** 2 + (maskBounds.normH * height) ** 2) * 1.1
+      : REF
+    const textScale = overlayScale * countryMaxDim / (cityDiag || 1)
+    const cityG = svg.append('g')
+    for (const city of cities) {
+      const projected = tempProj([city.lon, city.lat])
+      if (!projected) continue
+      const dx = (projected[0] - countryCx) * overlayScale
+      const dy = (projected[1] - countryCy) * overlayScale
+      const px = maskCx + dx * cosA - dy * sinA
+      const py = maskCy + dx * sinA + dy * cosA
 
-    if (city.capital) {
-      cityG.append('circle').attr('cx', px).attr('cy', py).attr('r', 8 * textScale)
-        .attr('fill', 'none').attr('stroke', 'white').attr('stroke-width', 1.2 * textScale)
+      if (city.capital) {
+        cityG.append('circle').attr('cx', px).attr('cy', py).attr('r', 8 * textScale)
+          .attr('fill', 'none').attr('stroke', s.borderColor).attr('stroke-width', 1.2 * textScale)
+      }
+      cityG.append('circle').attr('cx', px).attr('cy', py).attr('r', (city.capital ? 4 : 3) * textScale)
+        .attr('fill', s.borderColor).attr('opacity', 0.9)
+
+      cityG.append('text')
+        .attr('x', px + 10 * textScale).attr('y', py + 4 * textScale)
+        .attr('font-family', fontFamily)
+        .attr('font-size', (city.capital ? 11 : 9) * textScale)
+        .attr('font-weight', city.capital ? '500' : '400')
+        .attr('fill', s.borderColor).attr('opacity', 0.9)
+        .attr('filter', 'drop-shadow(0 1px 2px rgba(0,0,0,0.9))')
+        .text(city.name)
     }
-    cityG.append('circle').attr('cx', px).attr('cy', py).attr('r', (city.capital ? 4 : 3) * textScale)
-      .attr('fill', 'white').attr('opacity', 0.9)
-
-    cityG.append('text')
-      .attr('x', px + 10 * textScale).attr('y', py + 4 * textScale)
-      .attr('font-family', 'Geist, sans-serif')
-      .attr('font-size', (city.capital ? 11 : 9) * textScale)
-      .attr('font-weight', city.capital ? '500' : '400')
-      .attr('fill', 'white').attr('opacity', 0.9)
-      .attr('filter', 'drop-shadow(0 1px 2px rgba(0,0,0,0.9))')
-      .text(city.name)
   }
 
   renderBadge(svg)
@@ -211,6 +221,8 @@ function renderCities(
   cities: CityDot[],
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   proj: any,
+  fontFamily = 'Geist, sans-serif',
+  color = 'white',
 ) {
   for (const city of cities) {
     const coords = proj([city.lon, city.lat])
@@ -218,14 +230,14 @@ function renderCities(
     const [cx, cy] = coords
     if (city.capital) {
       svg.append('circle').attr('cx', cx).attr('cy', cy).attr('r', 6)
-        .attr('fill', 'none').attr('stroke', 'white').attr('stroke-width', 1)
+        .attr('fill', 'none').attr('stroke', color).attr('stroke-width', 1)
     }
     svg.append('circle').attr('cx', cx).attr('cy', cy).attr('r', city.capital ? 3 : 2.5)
-      .attr('fill', 'white').attr('opacity', 0.9)
+      .attr('fill', color).attr('opacity', 0.9)
     svg.append('text')
       .attr('x', cx + 8).attr('y', cy + 4)
-      .attr('font-family', 'Geist, sans-serif').attr('font-size', city.capital ? 10 : 8)
-      .attr('fill', 'white').attr('opacity', 0.9)
+      .attr('font-family', fontFamily).attr('font-size', city.capital ? 10 : 8)
+      .attr('fill', color).attr('opacity', 0.9)
       .attr('filter', 'drop-shadow(0 1px 2px rgba(0,0,0,0.9))').text(city.name)
   }
 }

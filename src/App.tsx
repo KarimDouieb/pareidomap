@@ -88,6 +88,9 @@ export default function App() {
         {screen === 'style' && selectedMatch && (
           <Style
             match={selectedMatch}
+            photo={photo}
+            maskBounds={maskBounds}
+            maskSize={maskSize}
             onBack={() => setScreen('result')}
           />
         )}
