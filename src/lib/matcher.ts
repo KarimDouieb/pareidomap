@@ -132,7 +132,7 @@ export function matchCountries(poly: Point[], metric: DistanceMetric = 'weighted
     return { iso_a3: country.iso_a3, name: country.name, subregion: country.subregion, continent: country.continent, score, bestDist, bestAngle }
   }).filter(Boolean) as MatchResult[]
 
-  return scored.sort((a, b) => a.bestDist - b.bestDist).slice(0, 32)
+  return scored.sort((a, b) => a.bestDist - b.bestDist).slice(0, 320)
 }
 
 

@@ -86,7 +86,6 @@ export function Result({
 }) {
   const [activeIndex, setActiveIndex] = useState(0)
   const [cities, setCities] = useState<Record<string, CityDot[]>>({})
-  const [showDebug, setShowDebug] = useState(false)
   const [debugShapes, setDebugShapes] = useState<ShapeDebug[] | null>(null)
   const svgRef = useRef<SVGSVGElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -118,6 +117,7 @@ export function Result({
       match.bestAngle,
       getAllFeatures(),
       maskSize ?? undefined,
+      match.name,
     )
   }, [matches, activeIndex, cities, maskBounds, maskSize])
 
@@ -132,7 +132,7 @@ export function Result({
       if (!feature || !svgRef.current) return
       const { offsetWidth: w, offsetHeight: h } = container
       if (w > 0 && h > 0) {
-        renderCountryMap(svgRef.current, feature, cities[match.iso_a3] ?? [], w, h, maskBounds, match.bestAngle, getAllFeatures(), maskSize ?? undefined)
+        renderCountryMap(svgRef.current, feature, cities[match.iso_a3] ?? [], w, h, maskBounds, match.bestAngle, getAllFeatures(), maskSize ?? undefined, match.name)
       }
     })
     ro.observe(container)
@@ -143,7 +143,7 @@ export function Result({
 
    useEffect(() => {
     if (!matches || !userPoly) return
-    setDebugShapes(getDebugShapes(userPoly, matches.slice(0, 32).map(m => m.iso_a3), metric))
+    setDebugShapes(getDebugShapes(userPoly, matches.slice(0, 320).map(m => m.iso_a3), metric))
   }, [matches, userPoly, metric])
 
   function handleMetricChange(m: DistanceMetric) {
@@ -172,8 +172,7 @@ export function Result({
         </div>
         <button
           className={cn(
-            'w-9 h-9 rounded-[10px] border flex items-center justify-center',
-            showDebug ? 'border-[#002FA7] text-[#002FA7]' : 'border-border',
+            'w-9 h-9 rounded-[10px] border flex items-center justify-center border-[#002FA7] text-[#002FA7]',
           )}
         >
           <MoreHorizontal className="w-4 h-4" />

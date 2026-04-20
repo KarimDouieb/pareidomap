@@ -1,6 +1,7 @@
 import { geoMercator, geoPath, type GeoPermissibleObjects } from 'd3-geo'
 import { select } from 'd3-selection'
 import type { MaskBounds } from './contour'
+import { renderCountryLabel } from './labelPath'
 
 export interface CityDot {
   name: string
@@ -21,6 +22,7 @@ export function renderCountryMap(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   allFeatures: any[] = [],
   maskSize: { w: number; h: number } | null = null,
+  countryName = '',
 ): void {
   const svg = select(svgEl)
   svg.selectAll('*').remove()
@@ -128,6 +130,12 @@ export function renderCountryMap(
     .attr('stroke-width', 2 / ((maskBounds ? Math.sqrt((maskBounds.normW * width) ** 2 + (maskBounds.normH * height) ** 2) : REF) / countryMaxDim))
     .attr('stroke-linejoin', 'round')
     .attr('filter', 'drop-shadow(0 0 4px rgba(0,0,0,0.9))')
+
+  // Country name label following the medial axis of the mainland polygon
+  const projectedMainland = mainlandRing
+    .map(coords => tempProj(coords as [number, number]))
+    .filter((p): p is [number, number] => p !== null)
+  renderCountryLabel(svg, projectedMainland, countryName, transform)
 
   // Cities — compute container-space coords by manually applying the SVG transform,
   // then render in an un-rotated group so labels stay horizontal.
