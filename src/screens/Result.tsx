@@ -54,20 +54,24 @@ function normPts(pts: Point[], size: number, flipY = true): string {
   return pts.map(([x, y]) => `${(x - cx) * scale + size / 2},${sy * (y - cy) * scale + size / 2}`).join(' ')
 }
 
-function ShapeCard({ debug }: { debug: ShapeDebug }) {
+function ShapeCard({ debug, isSelected, onClick }: { debug: ShapeDebug; isSelected: boolean; onClick: () => void }) {
   const SIZE = 88
-  // Both in Mercator Y-up space → flip for SVG Y-down
   const userRaw = normPts(debug.userRawPoly, SIZE, true)
   const countryRaw = debug.countryRawPoly ? normPts(debug.countryRawPoly, SIZE, true) : ''
   return (
-    <div className="flex flex-col items-center gap-0.5">
-      <svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`} className="bg-muted rounded">
+    <button
+      onClick={onClick}
+      className={cn(
+        'flex flex-col items-center gap-0.5 rounded-[8px] p-0.5 transition-all cursor-pointer',
+        isSelected ? 'ring-2 ring-[#002FA7]' : 'ring-1 ring-transparent hover:ring-border',
+      )}
+    >
+      <svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`} className={cn('rounded', isSelected ? 'bg-[#002FA7]/10' : 'bg-muted')}>
         {countryRaw && <polygon points={countryRaw} fill="none" stroke="#ef4444" strokeWidth="1" strokeLinejoin="round" opacity="0.85" />}
         <polygon points={userRaw} fill="none" stroke="#3b82f6" strokeWidth="1" strokeLinejoin="round" opacity="0.85" />
       </svg>
-      <span className="text-[9px] font-mono text-muted-foreground truncate max-w-[88px] text-center">{debug.name}</span>
-      {/* <span className="text-[9px] font-mono text-[#002FA7]">d={debug.bestDist.toFixed(3)} @{debug.bestAngle}°</span> */}
-    </div>
+      <span className={cn('text-[9px] font-mono truncate max-w-[88px] text-center', isSelected ? 'text-[#002FA7] font-medium' : 'text-muted-foreground')}>{debug.name}</span>
+    </button>
   )
 }
 
@@ -300,7 +304,7 @@ export function Result({
             ))}
           </div>
 
-          {/* Carousel navigation */}
+          {/* Navigation */}
           <div className="flex items-center justify-between mt-3">
             <button
               onClick={() => setActiveIndex(i => Math.max(0, i - 1))}
@@ -311,20 +315,9 @@ export function Result({
             >
               <ArrowLeft className="w-4 h-4" />
             </button>
-
-            <div className="flex items-center gap-2">
-              {matches.map((_, i) => (
-                <button
-                  key={i}
-                  onClick={() => setActiveIndex(i)}
-                  className={cn(
-                    'rounded-full transition-all',
-                    i === activeIndex ? 'w-6 h-2 bg-[#002FA7]' : 'w-2 h-2 bg-border',
-                  )}
-                />
-              ))}
-            </div>
-
+            <span className="text-xs font-mono text-muted-foreground">
+              {activeIndex + 1} / {matches.length}
+            </span>
             <button
               onClick={() => setActiveIndex(i => Math.min(matches.length - 1, i + 1))}
               className={cn(
@@ -346,7 +339,17 @@ export function Result({
             <span className="text-red-500">■</span> country
           </div>
           <div className="grid grid-cols-4 gap-3">
-            {debugShapes?.map(d => <ShapeCard key={d.iso} debug={d} />)}
+            {debugShapes?.map(d => (
+              <ShapeCard
+                key={d.iso}
+                debug={d}
+                isSelected={matches?.[activeIndex]?.iso_a3 === d.iso}
+                onClick={() => {
+                  const idx = matches?.findIndex(m => m.iso_a3 === d.iso) ?? -1
+                  if (idx >= 0) setActiveIndex(idx)
+                }}
+              />
+            ))}
           </div>
         </div>
       )}
