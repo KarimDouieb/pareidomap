@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { ArrowLeft, ArrowRight, MoreHorizontal } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { getFeatureByIso, getAllFeatures, getDebugShapes, type MatchResult, type ShapeDebug, type DistanceMetric } from '@/lib/matcher'
+import { getFeatureByIso, getAllFeatures, getDebugShapes, type MatchResult, type ShapeDebug } from '@/lib/matcher'
 import { renderCountryMap, type CityDot } from '@/lib/mapRenderer'
 import type { MaskBounds, Point } from '@/lib/contour'
 
@@ -95,14 +95,6 @@ function computeLayout(cW: number, cH: number, maskBounds: MaskBounds, maskSize:
 
 // ── Result screen ─────────────────────────────────────────────────────────────
 
-const METRICS: { value: DistanceMetric; label: string }[] = [
-  { value: 'weighted',  label: '1/h²' },
-  { value: 'chamfer',   label: 'chamfer' },
-  { value: 'hausdorff', label: 'hausdorff' },
-  { value: 'frechet',   label: 'fréchet' },
-  { value: 'turning',   label: 'turning' },
-]
-
 export function Result({
   matches,
   maskBounds,
@@ -110,8 +102,6 @@ export function Result({
   userPoly,
   maskSize,
   photo,
-  metric,
-  onMetricChange,
   onRetake,
 }: {
   matches: MatchResult[] | null
@@ -120,8 +110,6 @@ export function Result({
   userPoly: Point[] | null
   maskSize: { w: number; h: number } | null
   photo: string | null
-  metric: DistanceMetric
-  onMetricChange: (m: DistanceMetric) => void
   onRetake: () => void
 }) {
   const [activeIndex, setActiveIndex] = useState(0)
@@ -184,16 +172,10 @@ export function Result({
 
   const loading = !matches
 
-   useEffect(() => {
+  useEffect(() => {
     if (!matches || !userPoly) return
-    setDebugShapes(getDebugShapes(userPoly, matches.slice(0, 320).map(m => m.iso_a3), metric))
-  }, [matches, userPoly, metric])
-
-  function handleMetricChange(m: DistanceMetric) {
-    onMetricChange(m)
-    setDebugShapes(null)
-    setActiveIndex(0)
-  }
+    setDebugShapes(getDebugShapes(userPoly, matches.slice(0, 320).map(m => m.iso_a3)))
+  }, [matches, userPoly])
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -284,24 +266,6 @@ export function Result({
                 <span className="text-base font-normal">%</span>
               </div>
             </div>
-          </div>
-
-          {/* Metric selector */}
-          <div className="flex gap-1 mt-4 flex-wrap">
-            {METRICS.map(({ value, label }) => (
-              <button
-                key={value}
-                onClick={() => handleMetricChange(value)}
-                className={cn(
-                  'px-2 py-0.5 rounded text-[9px] font-mono border transition-colors',
-                  metric === value
-                    ? 'bg-[#002FA7] text-white border-[#002FA7]'
-                    : 'border-border text-muted-foreground',
-                )}
-              >
-                {label}
-              </button>
-            ))}
           </div>
 
           {/* Navigation */}

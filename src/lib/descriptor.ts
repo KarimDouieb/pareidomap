@@ -135,24 +135,9 @@ export function normalizePoly(pts: Point[]): Point[] {
 
 // ── Distance metrics ──────────────────────────────────────────────────────────
 
-export type DistanceMetric = 'weighted' | 'chamfer' | 'hausdorff' | 'frechet' | 'turning'
-
-// weighted: 1/h² on EFD coefficients — used when metric === 'weighted'
-export function descriptorDistance(a: Float32Array | number[], b: Float32Array | number[]): number {
-  let sum = 0
-  const H = a.length / 4
-  for (let h = 1; h <= H; h++) {
-    const w = 1 / (h * h), base = (h - 1) * 4
-    for (let k = 0; k < 4; k++) sum += w * (a[base + k] - b[base + k]) ** 2
-  }
-  return Math.sqrt(sum)
-}
-
-// Geometric distances — operate directly on normalized Point[] sequences.
-// Both inputs must already be normalized (normalizePoly) and have the same length.
-
-// chamfer: mean nearest-neighbour distance (one-sided, robust to outliers)
-function distChamfer(a: Point[], b: Point[]): number {
+// Mean nearest-neighbour distance (one-sided, robust to outliers).
+// Both inputs must be normalized (normalizePoly) and have the same length.
+export function chamferDistance(a: Point[], b: Point[]): number {
   let sum = 0
   for (const [ax, ay] of a) {
     let minD = Infinity
@@ -160,63 +145,6 @@ function distChamfer(a: Point[], b: Point[]): number {
     sum += Math.sqrt(minD)
   }
   return sum / a.length
-}
-
-// hausdorff: worst-case nearest-neighbour distance (bidirectional)
-function distHausdorff(a: Point[], b: Point[]): number {
-  function directed(p: Point[], q: Point[]): number {
-    let maxD = 0
-    for (const [px, py] of p) {
-      let minD = Infinity
-      for (const [qx, qy] of q) { const d = (px-qx)**2+(py-qy)**2; if (d < minD) minD = d }
-      if (minD > maxD) maxD = minD
-    }
-    return Math.sqrt(maxD)
-  }
-  return Math.max(directed(a, b), directed(b, a))
-}
-
-// frechet: discrete dog-leash distance — order-sensitive, iterative DP
-function distFrechet(a: Point[], b: Point[]): number {
-  const n = a.length, m = b.length
-  const dp = new Float32Array(n * m)
-  for (let i = 0; i < n; i++) {
-    for (let j = 0; j < m; j++) {
-      const d = Math.sqrt((a[i][0]-b[j][0])**2+(a[i][1]-b[j][1])**2)
-      if (i === 0 && j === 0) dp[0] = d
-      else if (i === 0) dp[j] = Math.max(d, dp[j-1])
-      else if (j === 0) dp[i*m] = Math.max(d, dp[(i-1)*m])
-      else dp[i*m+j] = Math.max(d, Math.min(dp[(i-1)*m+j], dp[i*m+j-1], dp[(i-1)*m+j-1]))
-    }
-  }
-  return dp[n*m-1]
-}
-
-// turning: RMS difference of cumulative turning-angle functions
-function turningAngles(poly: Point[]): number[] {
-  const n = poly.length, out: number[] = []
-  let cum = 0
-  for (let i = 0; i < n; i++) {
-    const [x0, y0] = poly[(i-1+n) % n], [x1, y1] = poly[i], [x2, y2] = poly[(i+1) % n]
-    let a = Math.atan2(y2-y1, x2-x1) - Math.atan2(y1-y0, x1-x0)
-    if (a >  Math.PI) a -= 2*Math.PI
-    if (a < -Math.PI) a += 2*Math.PI
-    cum += a; out.push(cum)
-  }
-  return out
-}
-function distTurning(a: Point[], b: Point[]): number {
-  const ta = turningAngles(a), tb = turningAngles(b)
-  let sum = 0
-  for (let i = 0; i < ta.length; i++) sum += (ta[i]-tb[i])**2
-  return Math.sqrt(sum / ta.length)
-}
-
-export function geometricPolyDistance(a: Point[], b: Point[], metric: DistanceMetric): number {
-  if (metric === 'chamfer')   return distChamfer(a, b)
-  if (metric === 'hausdorff') return distHausdorff(a, b)
-  if (metric === 'frechet')   return distFrechet(a, b)
-  return distTurning(a, b)
 }
 
 // ── Reconstruct polygon from EFD coefficients (for visualization / debug) ─────
