@@ -4,10 +4,11 @@ import { Camera } from '@/screens/Camera'
 import { Preview } from '@/screens/Preview'
 import { Trace, type TraceContinuePayload } from '@/screens/Trace'
 import { Result } from '@/screens/Result'
+import { Style } from '@/screens/Style'
 import { loadCountryData, matchCountries, type MatchResult } from '@/lib/matcher'
 import { extractLargestBlob, traceContour, simplifyPolygon, type MaskBounds, type Point } from '@/lib/contour'
 
-type Screen = 'onboarding' | 'camera' | 'preview' | 'trace' | 'result'
+type Screen = 'onboarding' | 'camera' | 'preview' | 'trace' | 'result' | 'style'
 
 export default function App() {
   const [screen, setScreen] = useState<Screen>('onboarding')
@@ -17,6 +18,7 @@ export default function App() {
   const [debugPoly, setDebugPoly] = useState<Point[] | null>(null)
   const [userPoly, setUserPoly] = useState<Point[] | null>(null)
   const [maskSize, setMaskSize] = useState<{ w: number; h: number } | null>(null)
+  const [selectedMatch, setSelectedMatch] = useState<MatchResult | null>(null)
 
   // Preload country data in the background on mount
   useEffect(() => { loadCountryData().catch(() => {}) }, [])
@@ -80,6 +82,13 @@ export default function App() {
             maskSize={maskSize}
             photo={photo}
             onRetake={() => { setMatches(null); setMaskBounds(null); setDebugPoly(null); setUserPoly(null); setMaskSize(null); setScreen('camera') }}
+            onStyle={(match) => { setSelectedMatch(match); setScreen('style') }}
+          />
+        )}
+        {screen === 'style' && selectedMatch && (
+          <Style
+            match={selectedMatch}
+            onBack={() => setScreen('result')}
           />
         )}
       </div>

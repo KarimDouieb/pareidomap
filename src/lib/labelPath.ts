@@ -126,6 +126,8 @@ export function renderCountryLabel(
   polygon: Pt[],
   name: string,
   transform: string,
+  fontFamily = 'Geist, sans-serif',
+  color = 'white',
 ): void {
   if (polygon.length < 8 || !name) return
 
@@ -144,11 +146,11 @@ export function renderCountryLabel(
     .attr('stroke', 'none')
 
   g.append('text')
-    .attr('font-family', 'Geist, sans-serif')
+    .attr('font-family', fontFamily)
     .attr('font-size', fontSize)
     .attr('font-weight', '700')
     .attr('letter-spacing', '0.06em')
-    .attr('fill', 'white')
+    .attr('fill', color)
     .attr('opacity', 0.88)
     .attr('filter', 'drop-shadow(0 1px 3px rgba(0,0,0,0.95))')
     .attr('dominant-baseline', 'middle')

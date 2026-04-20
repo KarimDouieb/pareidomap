@@ -103,6 +103,7 @@ export function Result({
   maskSize,
   photo,
   onRetake,
+  onStyle,
 }: {
   matches: MatchResult[] | null
   maskBounds: MaskBounds | null
@@ -111,6 +112,7 @@ export function Result({
   maskSize: { w: number; h: number } | null
   photo: string | null
   onRetake: () => void
+  onStyle?: (match: MatchResult) => void
 }) {
   const [activeIndex, setActiveIndex] = useState(0)
   const [cities, setCities] = useState<Record<string, CityDot[]>>({})
@@ -323,7 +325,10 @@ export function Result({
         <Button variant="outline" className="flex-1" onClick={onRetake}>
           Retake
         </Button>
-        <Button className="flex-1">
+        <Button
+          className="flex-1"
+          onClick={() => matches?.[activeIndex] && onStyle?.(matches[activeIndex])}
+        >
           Style this
           <ArrowRight className="w-[14px] h-[14px]" />
         </Button>

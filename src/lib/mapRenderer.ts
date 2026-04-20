@@ -10,6 +10,36 @@ export interface CityDot {
   capital: boolean
 }
 
+export type FontStyle = 'sans' | 'serif' | 'mono' | 'hand'
+
+export interface MapStyle {
+  showCities: boolean
+  showBorders: boolean
+  showNeighbors: boolean
+  font: FontStyle
+  borderColor: string
+  subBorderColor: string
+}
+
+export const DEFAULT_MAP_STYLE: MapStyle = {
+  showCities: true,
+  showBorders: true,
+  showNeighbors: true,
+  font: 'sans',
+  borderColor: '#ffffff',
+  subBorderColor: '#ffffff',
+}
+
+export const FONT_FAMILIES: Record<FontStyle, string> = {
+  sans: 'Geist, sans-serif',
+  serif: 'Georgia, serif',
+  mono: '"Geist Mono", monospace',
+  hand: 'cursive',
+}
+
+export const BORDER_COLORS = ['#ffffff', '#f5deb3', '#d4a574', '#5b8db8', '#4a7c59', '#c0392b'] as const
+export const SUB_BORDER_COLORS = ['#ffffff', '#f5deb3', '#d4a574', '#5b8db8', '#4a7c59', '#c0392b'] as const
+
 export function renderCountryMap(
   svgEl: SVGSVGElement,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -209,4 +239,96 @@ function renderBadge(svg: any) {
     .attr('font-family', 'Geist Mono, monospace').attr('font-size', 8)
     .attr('font-weight', '600').attr('letter-spacing', '0.08em')
     .attr('fill', 'white').text('PAREIDOMAP')
+}
+
+export function renderStylePreview(
+  svgEl: SVGSVGElement,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  feature: any,
+  cities: CityDot[],
+  width: number,
+  height: number,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  allFeatures: any[],
+  countryName: string,
+  style: MapStyle,
+): void {
+  const svg = select(svgEl)
+  svg.selectAll('*').remove()
+  svg.attr('viewBox', `0 0 ${width} ${height}`)
+
+  svg.append('rect').attr('width', width).attr('height', height).attr('fill', '#160f08')
+
+  const pad = Math.min(width, height) * 0.12
+  const proj = geoMercator().fitExtent([[pad, pad], [width - pad, height - pad]], feature as GeoPermissibleObjects)
+  const pathGen = geoPath(proj)
+  const fontFamily = FONT_FAMILIES[style.font]
+
+  if (style.showNeighbors && allFeatures.length > 0) {
+    const ng = svg.append('g')
+    for (const f of allFeatures) {
+      ng.append('path').datum(f as GeoPermissibleObjects)
+        .attr('d', d => pathGen(d))
+        .attr('fill', 'none')
+        .attr('stroke', style.subBorderColor)
+        .attr('stroke-width', 0.7)
+        .attr('stroke-dasharray', '3,2')
+        .attr('stroke-opacity', 0.4)
+        .attr('stroke-linejoin', 'round')
+    }
+  }
+
+  svg.append('path').datum(feature as GeoPermissibleObjects)
+    .attr('d', d => pathGen(d))
+    .attr('fill', 'rgba(255,255,255,0.05)')
+    .attr('stroke', 'none')
+
+  if (style.showBorders) {
+    svg.append('path').datum(feature as GeoPermissibleObjects)
+      .attr('d', d => pathGen(d))
+      .attr('fill', 'none')
+      .attr('stroke', style.borderColor)
+      .attr('stroke-width', 1.5)
+      .attr('stroke-linejoin', 'round')
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const geom = (feature as any).geometry
+  const rings: number[][][] = geom?.type === 'Polygon'
+    ? [geom.coordinates[0]]
+    : geom?.type === 'MultiPolygon'
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ? geom.coordinates.map((p: any) => p[0])
+      : []
+
+  if (rings.length) {
+    const mainlandRing = rings.reduce((best, r) => r.length > best.length ? r : best)
+    const projected = mainlandRing
+      .map((coords: number[]) => proj(coords as [number, number]))
+      .filter((p: [number, number] | null): p is [number, number] => p !== null)
+    renderCountryLabel(svg, projected, countryName, '', fontFamily, style.borderColor)
+  }
+
+  if (style.showCities) {
+    for (const city of cities) {
+      const pt = proj([city.lon, city.lat])
+      if (!pt) continue
+      const [cx, cy] = pt
+      if (city.capital) {
+        svg.append('circle').attr('cx', cx).attr('cy', cy).attr('r', 6)
+          .attr('fill', 'none').attr('stroke', style.borderColor).attr('stroke-width', 1)
+      }
+      svg.append('circle').attr('cx', cx).attr('cy', cy)
+        .attr('r', city.capital ? 3 : 2.5)
+        .attr('fill', style.borderColor).attr('opacity', 0.9)
+      svg.append('text')
+        .attr('x', cx + 8).attr('y', cy + 4)
+        .attr('font-family', fontFamily)
+        .attr('font-size', city.capital ? 10 : 8)
+        .attr('font-weight', city.capital ? '600' : '400')
+        .attr('fill', style.borderColor).attr('opacity', 0.85)
+        .attr('filter', 'drop-shadow(0 1px 2px rgba(0,0,0,0.9))')
+        .text(city.name)
+    }
+  }
 }
