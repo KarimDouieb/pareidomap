@@ -157,8 +157,12 @@ interface CountryEntry {
 const entries: CountryEntry[] = []
 
 for (const feature of world.features) {
-  const { ISO_A3, NAME, SUBREGION, CONTINENT } = feature.properties
-  if (!ISO_A3 || ISO_A3 === '-99') continue
+  const { ISO_A3, ISO_A3_EH, ADM0_A3, NAME, SUBREGION, CONTINENT } = feature.properties
+  const iso = (ISO_A3 && ISO_A3 !== '-99') ? ISO_A3
+    : (ISO_A3_EH && ISO_A3_EH !== '-99') ? ISO_A3_EH
+    : (ADM0_A3 && ADM0_A3 !== '-99') ? ADM0_A3
+    : null
+  if (!iso) continue
 
   const ring = getLargestRing(feature.geometry)
   if (!ring || ring.length < 10) continue
@@ -168,7 +172,7 @@ for (const feature of world.features) {
   const descriptors = computeEFD(resampled, N_HARMONICS)
 
   entries.push({
-    iso_a3: ISO_A3,
+    iso_a3: iso,
     name: NAME,
     subregion: SUBREGION ?? '',
     continent: CONTINENT ?? '',

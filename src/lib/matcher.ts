@@ -48,10 +48,14 @@ export async function loadCountryData(): Promise<void> {
   const descData = await descRes.json() as { countries: CountryDescriptor[] }
   countryDescriptors = descData.countries
 
-  const worldData = await worldRes.json() as { features: Array<{ properties: { ISO_A3: string } }> }
+  const worldData = await worldRes.json() as { features: Array<{ properties: { ISO_A3: string; ISO_A3_EH: string; ADM0_A3: string } }> }
   for (const feature of worldData.features) {
-    const iso = feature.properties?.ISO_A3
-    if (iso && iso !== '-99') worldFeatures.set(iso, feature)
+    const p = feature.properties
+    const iso = (p?.ISO_A3 && p.ISO_A3 !== '-99') ? p.ISO_A3
+      : (p?.ISO_A3_EH && p.ISO_A3_EH !== '-99') ? p.ISO_A3_EH
+      : (p?.ADM0_A3 && p.ADM0_A3 !== '-99') ? p.ADM0_A3
+      : null
+    if (iso) worldFeatures.set(iso, feature)
   }
 }
 
