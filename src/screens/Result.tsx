@@ -6,7 +6,7 @@ import { getFeatureByIso, getAllFeatures, getDebugShapes, type MatchResult, type
 import { renderCountryMap, type CityDot } from '@/lib/mapRenderer'
 import type { MaskBounds, Point } from '@/lib/contour'
 
-const CACHE_NAME = 'pareidomap-ml-v1'
+const CACHE_NAME = 'pareidomap-data-v1'
 const BASE = import.meta.env.BASE_URL
 
 async function loadCities(): Promise<Record<string, CityDot[]>> {
