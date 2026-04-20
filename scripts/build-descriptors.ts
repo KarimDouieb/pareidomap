@@ -157,10 +157,10 @@ interface CountryEntry {
 const entries: CountryEntry[] = []
 
 for (const feature of world.features) {
-  const { ISO_A3, ISO_A3_EH, ADM0_A3, NAME, SUBREGION, CONTINENT } = feature.properties
+  const { ISO_A3, ISO_A3_EH, ADM0_A3, HOMEPART, NAME, SUBREGION, CONTINENT } = feature.properties
   const iso = (ISO_A3 && ISO_A3 !== '-99') ? ISO_A3
-    : (ISO_A3_EH && ISO_A3_EH !== '-99') ? ISO_A3_EH
-    : (ADM0_A3 && ADM0_A3 !== '-99') ? ADM0_A3
+    : (HOMEPART === 1 && ISO_A3_EH && ISO_A3_EH !== '-99') ? ISO_A3_EH
+    : (HOMEPART === 1 && ADM0_A3 && ADM0_A3 !== '-99') ? ADM0_A3
     : null
   if (!iso) continue
 
