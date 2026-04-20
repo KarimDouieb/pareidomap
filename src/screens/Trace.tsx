@@ -74,8 +74,10 @@ export function Trace({ photo, onRetake, onContinue }: {
       setTapDots(dots => [...dots, { x: relX * 100, y: relY * 100, remove: true }])
       if (imgRef.current) subtractSegment(imgRef.current, relX, relY)
     } else {
+      if (tapTimerRef.current) { clearTimeout(tapTimerRef.current); tapTimerRef.current = null }
       tapTimerRef.current = setTimeout(() => {
         tapTimerRef.current = null
+        lastTapRef.current = null
         setTapDots([{ x: relX * 100, y: relY * 100 }])
         if (imgRef.current) segment(imgRef.current, relX, relY)
       }, 350)

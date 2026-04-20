@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { ArrowLeft, ArrowRight, MoreHorizontal } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -53,6 +53,24 @@ function ShapeCard({ debug }: { debug: ShapeDebug }) {
   )
 }
 
+// ── Layout helpers ────────────────────────────────────────────────────────────
+
+function computeLayout(cW: number, cH: number, maskBounds: MaskBounds, maskSize: { w: number; h: number }) {
+  const coverScale = Math.max(cW / maskSize.w, cH / maskSize.h)
+  const scaledH = maskSize.h * coverScale
+  const defOffsetY = (cH - scaledH) / 2
+  const shapeCy = maskBounds.normCy * scaledH + defOffsetY
+  let vs = cH / 2 - shapeCy
+  vs = Math.max(defOffsetY, Math.min(-defOffsetY, vs))
+  return {
+    coverScale,
+    offsetX: (cW - maskSize.w * coverScale) / 2,
+    offsetY: defOffsetY + vs,
+    vertShift: vs,
+    objPositionY: defOffsetY !== 0 ? 50 + vs * 50 / defOffsetY : 50,
+  }
+}
+
 // ── Result screen ─────────────────────────────────────────────────────────────
 
 const METRICS: { value: DistanceMetric; label: string }[] = [
@@ -87,8 +105,20 @@ export function Result({
   const [activeIndex, setActiveIndex] = useState(0)
   const [cities, setCities] = useState<Record<string, CityDot[]>>({})
   const [debugShapes, setDebugShapes] = useState<ShapeDebug[] | null>(null)
+  const [containerSize, setContainerSize] = useState<{ w: number; h: number } | null>(null)
   const svgRef = useRef<SVGSVGElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+
+  const photoObjPositionY = useMemo(() => {
+    if (!containerSize || !maskBounds || !maskSize) return 50
+    return computeLayout(containerSize.w, containerSize.h, maskBounds, maskSize).objPositionY
+  }, [containerSize, maskBounds, maskSize])
+
+  const polyTransform = useMemo(() => {
+    if (!containerSize || !maskBounds || !maskSize) return null
+    const { coverScale, offsetX, offsetY } = computeLayout(containerSize.w, containerSize.h, maskBounds, maskSize)
+    return { coverScale, offsetX, offsetY }
+  }, [containerSize, maskBounds, maskSize])
 
   useEffect(() => {
     loadCities().then(setCities).catch(() => {})
@@ -107,18 +137,8 @@ export function Result({
     const { offsetWidth: w, offsetHeight: h } = container
     if (w === 0 || h === 0) return
 
-    renderCountryMap(
-      svg,
-      feature,
-      cities[match.iso_a3] ?? [],
-      w,
-      h,
-      maskBounds,
-      match.bestAngle,
-      getAllFeatures(),
-      maskSize ?? undefined,
-      match.name,
-    )
+    const vs = maskBounds && maskSize ? computeLayout(w, h, maskBounds, maskSize).vertShift : 0
+    renderCountryMap(svg, feature, cities[match.iso_a3] ?? [], w, h, maskBounds, match.bestAngle, getAllFeatures(), maskSize ?? undefined, match.name, vs)
   }, [matches, activeIndex, cities, maskBounds, maskSize])
 
   // Re-render when container resizes
@@ -126,18 +146,19 @@ export function Result({
     const container = containerRef.current
     if (!container) return
     const ro = new ResizeObserver(() => {
+      const { offsetWidth: w, offsetHeight: h } = container
+      if (w <= 0 || h <= 0) return
+      setContainerSize({ w, h })
       if (!matches || matches.length === 0) return
       const match = matches[activeIndex]
       const feature = getFeatureByIso(match.iso_a3)
       if (!feature || !svgRef.current) return
-      const { offsetWidth: w, offsetHeight: h } = container
-      if (w > 0 && h > 0) {
-        renderCountryMap(svgRef.current, feature, cities[match.iso_a3] ?? [], w, h, maskBounds, match.bestAngle, getAllFeatures(), maskSize ?? undefined, match.name)
-      }
+      const vs = maskBounds && maskSize ? computeLayout(w, h, maskBounds, maskSize).vertShift : 0
+      renderCountryMap(svgRef.current, feature, cities[match.iso_a3] ?? [], w, h, maskBounds, match.bestAngle, getAllFeatures(), maskSize ?? undefined, match.name, vs)
     })
     ro.observe(container)
     return () => ro.disconnect()
-  }, [matches, activeIndex, cities])
+  }, [matches, activeIndex, cities, maskBounds, maskSize])
 
   const loading = !matches
 
@@ -188,7 +209,7 @@ export function Result({
         >
           {/* Photo background */}
           {photo && (
-            <img src={photo} alt="captured" className="absolute inset-0 w-full h-full object-cover" />
+            <img src={photo} alt="captured" className="absolute inset-0 w-full h-full object-cover" style={{ objectPosition: `50% ${photoObjPositionY}%` }} />
           )}
           {/* D3 overlay */}
           {loading ? (
@@ -198,21 +219,19 @@ export function Result({
           ) : (
             <svg ref={svgRef} className="absolute inset-0 w-full h-full" />
           )}
-          {/* Debug polygon overlay — viewBox matches natural image dims, slice = object-cover */}
-          {debugPoly && debugPoly.length > 1 && maskSize && (
-            <svg
-              className="absolute inset-0 w-full h-full"
-              viewBox={`0 0 ${maskSize.w} ${maskSize.h}`}
-              preserveAspectRatio="xMidYMid slice"
-            >
-              <polygon
-                points={debugPoly.map(([x, y]) => `${x},${y}`).join(' ')}
-                fill="none"
-                stroke="#00ff88"
-                strokeWidth={maskSize.w * 0.003}
-                strokeLinejoin="round"
-                opacity="0.8"
-              />
+          {/* Debug polygon overlay */}
+          {debugPoly && debugPoly.length > 1 && maskSize && polyTransform && (
+            <svg className="absolute inset-0 w-full h-full">
+              <g transform={`translate(${polyTransform.offsetX}, ${polyTransform.offsetY}) scale(${polyTransform.coverScale})`}>
+                <polygon
+                  points={debugPoly.map(([x, y]) => `${x},${y}`).join(' ')}
+                  fill="none"
+                  stroke="#00ff88"
+                  strokeWidth={maskSize.w * 0.003}
+                  strokeLinejoin="round"
+                  opacity="0.8"
+                />
+              </g>
             </svg>
           )}
         </div>

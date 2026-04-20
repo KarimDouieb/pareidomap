@@ -50,7 +50,8 @@ export function useSegmentation() {
         for (let i = 0; i < s.mask.length; i++) {
           next[i] = s.mask[i] === 255 && removeMask[i] !== 255 ? 255 : 0
         }
-        return { ...s, status: 'ready', mask: next }
+        const hasPixels = next.some(v => v === 255)
+        return { ...s, status: 'ready', mask: hasPixels ? next : null }
       })
     } catch (err) {
       setState(s => ({ ...s, status: 'error', error: String(err) }))

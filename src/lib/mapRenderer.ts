@@ -23,6 +23,7 @@ export function renderCountryMap(
   allFeatures: any[] = [],
   maskSize: { w: number; h: number } | null = null,
   countryName = '',
+  verticalShift = 0,
 ): void {
   const svg = select(svgEl)
   svg.selectAll('*').remove()
@@ -82,7 +83,7 @@ export function renderCountryMap(
     const offsetX = (width - imgW * coverScale) / 2
     const offsetY = (height - imgH * coverScale) / 2
     maskCx = maskBounds.normCx * imgW * coverScale + offsetX
-    maskCy = maskBounds.normCy * imgH * coverScale + offsetY
+    maskCy = maskBounds.normCy * imgH * coverScale + offsetY + verticalShift
     const maskMaxDim = Math.max(maskBounds.normW * imgW, maskBounds.normH * imgH) * coverScale
     overlayScale = maskMaxDim / countryMaxDim
     transform = `translate(${maskCx},${maskCy}) rotate(${bestAngle}) scale(${overlayScale}) translate(${-countryCx},${-countryCy})`
