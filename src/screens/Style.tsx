@@ -18,9 +18,10 @@ import { computeLayout } from '@/lib/layout'
 import { PhotoMapCanvas } from '@/components/PhotoMapCanvas'
 import type { MaskBounds } from '@/lib/contour'
 
-const TOGGLE_ROWS: { key: keyof Pick<MapStyle, 'showCities' | 'showBorders' | 'showNeighbors'>; label: string }[] = [
+const TOGGLE_ROWS: { key: keyof Pick<MapStyle, 'showCities' | 'showBorders' | 'showNeighbors' | 'showNeighborLabels'>; label: string }[] = [
   { key: 'showCities', label: 'Capital & cities' },
   { key: 'showNeighbors', label: 'Bordering countries' },
+  { key: 'showNeighborLabels', label: 'Country labels' },
   { key: 'showBorders', label: 'Show borders' },
 ]
 

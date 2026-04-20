@@ -16,6 +16,7 @@ export interface MapStyle {
   showCities: boolean
   showBorders: boolean
   showNeighbors: boolean
+  showNeighborLabels: boolean
   font: FontStyle
   borderColor: string
   subBorderColor: string
@@ -25,6 +26,7 @@ export const DEFAULT_MAP_STYLE: MapStyle = {
   showCities: true,
   showBorders: true,
   showNeighbors: true,
+  showNeighborLabels: true,
   font: 'sans',
   borderColor: '#ffffff',
   subBorderColor: '#ffffff',
@@ -212,7 +214,169 @@ export function renderCountryMap(
     }
   }
 
+  if (s.showNeighborLabels && allFeatures.length > 0) {
+    renderNeighborLabels(
+      svg, allFeatures, feature,
+      tempProj, tempPathGen, maskCx, maskCy,
+      countryCx, countryCy, countryMaxDim, overlayScale, cosA, sinA,
+      width, height, fontFamily, s.borderColor,
+    )
+  }
+
   renderBadge(svg)
+}
+
+// Returns a single-polygon Feature using only the largest ring (by coordinate count,
+// a reliable proxy for area). Strips overseas territories, islands, exclaves.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function largestPolygonFeature(f: any): any {
+  const geom = f?.geometry
+  if (!geom) return f
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const rings: number[][][] = geom.type === 'Polygon' ? [geom.coordinates[0]]
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    : geom.type === 'MultiPolygon' ? geom.coordinates.map((p: any) => p[0])
+    : []
+  if (rings.length <= 1) return f
+  const best = rings.reduce((a, b) => a.length >= b.length ? a : b)
+  return { type: 'Feature', geometry: { type: 'Polygon', coordinates: [best] }, properties: f.properties }
+}
+
+function clipPolyToRect(pts: [number, number][], x0: number, y0: number, x1: number, y1: number): [number, number][] {
+  type P = [number, number]
+  function clipEdge(poly: P[], inside: (p: P) => boolean, intersect: (a: P, b: P) => P): P[] {
+    if (!poly.length) return []
+    const out: P[] = []
+    for (let i = 0; i < poly.length; i++) {
+      const cur = poly[i], prev = poly[(i + poly.length - 1) % poly.length]
+      const ci = inside(cur), pi = inside(prev)
+      if (ci) { if (!pi) out.push(intersect(prev, cur)); out.push(cur) }
+      else if (pi) out.push(intersect(prev, cur))
+    }
+    return out
+  }
+  function ix(a: P, b: P, fn: (p: P) => number): P {
+    const da = fn(a), db = fn(b), t = da / (da - db)
+    return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]
+  }
+  let p = pts
+  p = clipEdge(p, q => q[0] >= x0, (a, b) => ix(a, b, q => q[0] - x0))
+  p = clipEdge(p, q => q[0] <= x1, (a, b) => ix(a, b, q => x1 - q[0]))
+  p = clipEdge(p, q => q[1] >= y0, (a, b) => ix(a, b, q => q[1] - y0))
+  p = clipEdge(p, q => q[1] <= y1, (a, b) => ix(a, b, q => y1 - q[1]))
+  return p
+}
+
+function polyAreaAndCentroid(pts: [number, number][]): { area: number; cx: number; cy: number } {
+  let area = 0, cx = 0, cy = 0
+  for (let i = 0; i < pts.length; i++) {
+    const [x1, y1] = pts[i], [x2, y2] = pts[(i + 1) % pts.length]
+    const cross = x1 * y2 - x2 * y1
+    area += cross; cx += (x1 + x2) * cross; cy += (y1 + y2) * cross
+  }
+  area /= 2
+  if (Math.abs(area) < 1e-6) {
+    const mx = pts.reduce((s, p) => s + p[0], 0) / pts.length
+    const my = pts.reduce((s, p) => s + p[1], 0) / pts.length
+    return { area: 0, cx: mx, cy: my }
+  }
+  return { area: Math.abs(area), cx: cx / (6 * area), cy: cy / (6 * area) }
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function renderNeighborLabels(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  svg: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  allFeatures: any[],
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  mainFeature: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  tempProj: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  tempPathGen: any,
+  maskCx: number, maskCy: number,
+  countryCx: number, countryCy: number,
+  countryMaxDim: number,
+  overlayScale: number, cosA: number, sinA: number,
+  width: number, height: number,
+  fontFamily: string, color: string,
+): void {
+  function toScreen(px: number, py: number): [number, number] {
+    const dx = (px - countryCx) * overlayScale
+    const dy = (py - countryCy) * overlayScale
+    return [maskCx + dx * cosA - dy * sinA, maskCy + dx * sinA + dy * cosA]
+  }
+
+  // Stage-1 filter: centroid must be within 2.5× countryMaxDim in 1000-space.
+  // Scale-independent — prevents far-away countries (USA, Australia…) regardless
+  // of how small overlayScale is.
+  const cutoff1000 = countryMaxDim * 2.5
+
+  const candidates: Array<{ name: string; lx: number; ly: number; score: number; fontSize: number }> = []
+
+  for (const f of allFeatures) {
+    if (f === mainFeature) continue
+    const name = (f?.properties?.NAME || '') as string
+    if (!name) continue
+
+    // Use only the largest polygon ring — strips overseas territories so centroid
+    // and bounds reflect the mainland (French Guiana ≠ France, Alaska ≠ USA, etc.)
+    const mainPoly = largestPolygonFeature(f)
+
+    const centroid1000 = tempPathGen.centroid(mainPoly) as [number, number] | null
+    if (!centroid1000 || !isFinite(centroid1000[0])) continue
+
+    // Stage-1: 1000-space distance gate
+    if (Math.abs(centroid1000[0] - countryCx) > cutoff1000 ||
+        Math.abs(centroid1000[1] - countryCy) > cutoff1000) continue
+
+    // Project the actual polygon ring to screen space and clip to viewport
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const rawRing: [number, number][] = (mainPoly?.geometry?.coordinates?.[0] as any[] ?? [])
+      .map((c: [number, number]) => tempProj(c))
+      .filter((p: [number, number] | null): p is [number, number] => p !== null)
+    if (rawRing.length < 3) continue
+    const screenRing = rawRing.map(([px, py]) => toScreen(px, py))
+    const clipped = clipPolyToRect(screenRing, 0, 0, width, height)
+    if (clipped.length < 3) continue
+
+    const { area: visArea, cx: lx, cy: ly } = polyAreaAndCentroid(clipped)
+    if (visArea < 300) continue
+
+    // Bounding box of the clipped polygon for font sizing
+    const clMinX = Math.min(...clipped.map(p => p[0]))
+    const clMaxX = Math.max(...clipped.map(p => p[0]))
+    const clMinY = Math.min(...clipped.map(p => p[1]))
+    const clMaxY = Math.max(...clipped.map(p => p[1]))
+    const clW = clMaxX - clMinX, clH = clMaxY - clMinY
+
+    const maxFontH = clH * 0.35
+    const maxFontW = clW * 0.78 / Math.max(name.length * 0.55, 1)
+    const fontSize = Math.min(10, maxFontH, maxFontW)
+    if (fontSize < 7) continue
+
+    const dist1000 = Math.hypot(centroid1000[0] - countryCx, centroid1000[1] - countryCy)
+    const score = visArea * (countryMaxDim / Math.max(dist1000, 1))
+    candidates.push({ name, lx, ly, score, fontSize })
+  }
+
+  // Sort by combined score: visible area weighted by proximity to the main country
+  candidates.sort((a, b) => b.score - a.score)
+  for (const { name, lx, ly, fontSize } of candidates.slice(0, 3)) {
+    svg.append('text')
+      .attr('x', lx)
+      .attr('y', ly)
+      .attr('text-anchor', 'middle')
+      .attr('dominant-baseline', 'middle')
+      .attr('font-family', fontFamily)
+      .attr('font-size', fontSize)
+      .attr('font-style', 'italic')
+      .attr('fill', color)
+      .attr('opacity', 0.6)
+      .attr('filter', 'drop-shadow(0 1px 2px rgba(0,0,0,0.8))')
+      .text(name)
+  }
 }
 
 function renderCities(
@@ -253,94 +417,3 @@ function renderBadge(svg: any) {
     .attr('fill', 'white').text('PAREIDOMAP')
 }
 
-export function renderStylePreview(
-  svgEl: SVGSVGElement,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  feature: any,
-  cities: CityDot[],
-  width: number,
-  height: number,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  allFeatures: any[],
-  countryName: string,
-  style: MapStyle,
-): void {
-  const svg = select(svgEl)
-  svg.selectAll('*').remove()
-  svg.attr('viewBox', `0 0 ${width} ${height}`)
-
-  svg.append('rect').attr('width', width).attr('height', height).attr('fill', '#160f08')
-
-  const pad = Math.min(width, height) * 0.12
-  const proj = geoMercator().fitExtent([[pad, pad], [width - pad, height - pad]], feature as GeoPermissibleObjects)
-  const pathGen = geoPath(proj)
-  const fontFamily = FONT_FAMILIES[style.font]
-
-  if (style.showNeighbors && allFeatures.length > 0) {
-    const ng = svg.append('g')
-    for (const f of allFeatures) {
-      ng.append('path').datum(f as GeoPermissibleObjects)
-        .attr('d', d => pathGen(d))
-        .attr('fill', 'none')
-        .attr('stroke', style.subBorderColor)
-        .attr('stroke-width', 0.7)
-        .attr('stroke-dasharray', '3,2')
-        .attr('stroke-opacity', 0.4)
-        .attr('stroke-linejoin', 'round')
-    }
-  }
-
-  svg.append('path').datum(feature as GeoPermissibleObjects)
-    .attr('d', d => pathGen(d))
-    .attr('fill', 'rgba(255,255,255,0.05)')
-    .attr('stroke', 'none')
-
-  if (style.showBorders) {
-    svg.append('path').datum(feature as GeoPermissibleObjects)
-      .attr('d', d => pathGen(d))
-      .attr('fill', 'none')
-      .attr('stroke', style.borderColor)
-      .attr('stroke-width', 1.5)
-      .attr('stroke-linejoin', 'round')
-  }
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const geom = (feature as any).geometry
-  const rings: number[][][] = geom?.type === 'Polygon'
-    ? [geom.coordinates[0]]
-    : geom?.type === 'MultiPolygon'
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      ? geom.coordinates.map((p: any) => p[0])
-      : []
-
-  if (rings.length) {
-    const mainlandRing = rings.reduce((best, r) => r.length > best.length ? r : best)
-    const projected = mainlandRing
-      .map((coords: number[]) => proj(coords as [number, number]))
-      .filter((p: [number, number] | null): p is [number, number] => p !== null)
-    renderCountryLabel(svg, projected, countryName, '', fontFamily, style.borderColor)
-  }
-
-  if (style.showCities) {
-    for (const city of cities) {
-      const pt = proj([city.lon, city.lat])
-      if (!pt) continue
-      const [cx, cy] = pt
-      if (city.capital) {
-        svg.append('circle').attr('cx', cx).attr('cy', cy).attr('r', 6)
-          .attr('fill', 'none').attr('stroke', style.borderColor).attr('stroke-width', 1)
-      }
-      svg.append('circle').attr('cx', cx).attr('cy', cy)
-        .attr('r', city.capital ? 3 : 2.5)
-        .attr('fill', style.borderColor).attr('opacity', 0.9)
-      svg.append('text')
-        .attr('x', cx + 8).attr('y', cy + 4)
-        .attr('font-family', fontFamily)
-        .attr('font-size', city.capital ? 10 : 8)
-        .attr('font-weight', city.capital ? '600' : '400')
-        .attr('fill', style.borderColor).attr('opacity', 0.85)
-        .attr('filter', 'drop-shadow(0 1px 2px rgba(0,0,0,0.9))')
-        .text(city.name)
-    }
-  }
-}
