@@ -5,7 +5,7 @@ import { Preview } from '@/screens/Preview'
 import { Trace, type TraceContinuePayload } from '@/screens/Trace'
 import { Result } from '@/screens/Result'
 import { Style } from '@/screens/Style'
-import { loadCountryData, matchCountries, type MatchResult } from '@/lib/matcher'
+import { loadCountryData, loadSeaData, matchCountries, type MatchResult } from '@/lib/matcher'
 import { extractLargestBlob, traceContour, simplifyPolygon, type MaskBounds, type Point } from '@/lib/contour'
 
 type Screen = 'onboarding' | 'camera' | 'preview' | 'trace' | 'result' | 'style'
@@ -20,8 +20,11 @@ export default function App() {
   const [maskSize, setMaskSize] = useState<{ w: number; h: number } | null>(null)
   const [selectedMatch, setSelectedMatch] = useState<MatchResult | null>(null)
 
-  // Preload country data in the background on mount
-  useEffect(() => { loadCountryData().catch(() => {}) }, [])
+  // Preload country and sea data in the background on mount
+  useEffect(() => {
+    loadCountryData().catch(() => {})
+    loadSeaData().catch(() => {})
+  }, [])
 
   function handleCapture(dataUrl: string) {
     setPhoto(dataUrl)

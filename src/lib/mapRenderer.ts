@@ -17,6 +17,7 @@ export interface MapStyle {
   showBorders: boolean
   showNeighbors: boolean
   showNeighborLabels: boolean
+  showSeaLabels: boolean
   font: FontStyle
   borderColor: string
   subBorderColor: string
@@ -27,6 +28,7 @@ export const DEFAULT_MAP_STYLE: MapStyle = {
   showBorders: true,
   showNeighbors: true,
   showNeighborLabels: true,
+  showSeaLabels: true,
   font: 'sans',
   borderColor: '#ffffff',
   subBorderColor: '#ffffff',
@@ -57,6 +59,8 @@ export function renderCountryMap(
   countryName = '',
   verticalShift = 0,
   style: MapStyle | null = null,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  seaFeatures: any[] = [],
 ): void {
   const s = style ?? DEFAULT_MAP_STYLE
   const fontFamily = FONT_FAMILIES[s.font]
@@ -223,6 +227,15 @@ export function renderCountryMap(
     )
   }
 
+  if (s.showSeaLabels && seaFeatures.length > 0) {
+    renderSeaLabels(
+      svg, seaFeatures, tempProj,
+      maskCx, maskCy, countryCx, countryCy,
+      overlayScale, cosA, sinA,
+      width, height, fontFamily, s.borderColor,
+    )
+  }
+
   renderBadge(svg)
 }
 
@@ -376,6 +389,98 @@ function renderNeighborLabels(
       .attr('opacity', 0.6)
       .attr('filter', 'drop-shadow(0 1px 2px rgba(0,0,0,0.8))')
       .text(name)
+  }
+}
+
+const SEA_FONT = '"Times New Roman", Georgia, serif'
+
+function splitSeaName(name: string): string[] {
+  const words = name.split(/\s+/)
+  if (words.length <= 2) return words
+  const half = Math.ceil(words.length / 2)
+  return [words.slice(0, half).join(' '), words.slice(half).join(' ')]
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function renderSeaLabels(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  svg: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  seaFeatures: any[],
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  tempProj: any,
+  maskCx: number, maskCy: number,
+  countryCx: number, countryCy: number,
+  overlayScale: number, cosA: number, sinA: number,
+  width: number, height: number,
+  _fontFamily: string, color: string,
+): void {
+  function toScreen(px: number, py: number): [number, number] {
+    const dx = (px - countryCx) * overlayScale
+    const dy = (py - countryCy) * overlayScale
+    return [maskCx + dx * cosA - dy * sinA, maskCy + dx * sinA + dy * cosA]
+  }
+
+  const candidates: Array<{ lines: string[]; lx: number; ly: number; score: number; fontSize: number }> = []
+
+  for (const f of seaFeatures) {
+    const name = (f?.properties?.NAME || '') as string
+    if (!name) continue
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const coords = f?.geometry?.coordinates?.[0] as [number, number][] | undefined
+    if (!coords || coords.length < 3) continue
+
+    const rawRing: [number, number][] = coords
+      .map((c: [number, number]) => tempProj(c))
+      .filter((p: [number, number] | null): p is [number, number] => p !== null)
+    if (rawRing.length < 3) continue
+
+    const screenRing = rawRing.map(([px, py]) => toScreen(px, py))
+    const clipped = clipPolyToRect(screenRing, 0, 0, width, height)
+    if (clipped.length < 3) continue
+
+    const { area: visArea, cx: lx, cy: ly } = polyAreaAndCentroid(clipped)
+    if (visArea < 500) continue
+
+    const clMinX = Math.min(...clipped.map(p => p[0]))
+    const clMaxX = Math.max(...clipped.map(p => p[0]))
+    const clMinY = Math.min(...clipped.map(p => p[1]))
+    const clMaxY = Math.max(...clipped.map(p => p[1]))
+    const clW = clMaxX - clMinX, clH = clMaxY - clMinY
+
+    const lines = splitSeaName(name)
+    const longestLine = lines.reduce((a, b) => a.length >= b.length ? a : b)
+    const maxFontH = clH * 0.18 / lines.length
+    const maxFontW = clW * 0.55 / Math.max(longestLine.length * 0.5, 1)
+    const fontSize = Math.min(14, maxFontH, maxFontW)
+    if (fontSize < 6) continue
+
+    const seaCx = rawRing.reduce((s, p) => s + p[0], 0) / rawRing.length
+    const seaCy = rawRing.reduce((s, p) => s + p[1], 0) / rawRing.length
+    const dist = Math.hypot(seaCx - countryCx, seaCy - countryCy)
+    const score = visArea / Math.max(dist, 1)
+    candidates.push({ lines, lx, ly, score, fontSize })
+  }
+
+  candidates.sort((a, b) => b.score - a.score)
+  for (const { lines, lx, ly, fontSize } of candidates.slice(0, 3)) {
+    const lineHeight = fontSize * 1.0
+    const textEl = svg.append('text')
+      .attr('text-anchor', 'middle')
+      .attr('font-family', SEA_FONT)
+      .attr('font-size', fontSize)
+      .attr('font-style', 'italic')
+      .attr('letter-spacing', '0.06em')
+      .attr('fill', color)
+      .attr('opacity', 0.8)
+      .attr('filter', 'drop-shadow(0 1px 2px rgba(0,0,0,0.7))')
+    for (let i = 0; i < lines.length; i++) {
+      textEl.append('tspan')
+        .attr('x', lx)
+        .attr('y', ly - ((lines.length - 1) * lineHeight) / 2 + i * lineHeight)
+        .attr('dominant-baseline', 'middle')
+        .text(lines[i])
+    }
   }
 }
 

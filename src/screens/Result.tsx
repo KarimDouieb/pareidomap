@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { ArrowLeft, ArrowRight, MoreHorizontal } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { getFeatureByIso, getAllFeatures, getDebugShapes, type MatchResult, type ShapeDebug } from '@/lib/matcher'
+import { getFeatureByIso, getAllFeatures, getAllSeaFeatures, getDebugShapes, type MatchResult, type ShapeDebug } from '@/lib/matcher'
 import { renderCountryMap, type CityDot } from '@/lib/mapRenderer'
 import { loadCities } from '@/lib/cities'
 import { computeLayout } from '@/lib/layout'
@@ -86,7 +86,7 @@ export function Result({
     const feature = getFeatureByIso(match.iso_a3)
     if (!feature) return
     const vs = maskBounds && maskSize ? computeLayout(w, h, maskBounds, maskSize).vertShift : 0
-    renderCountryMap(svg, feature, cities[match.iso_a3] ?? [], w, h, maskBounds, match.bestAngle, getAllFeatures(), maskSize ?? undefined, match.name, vs)
+    renderCountryMap(svg, feature, cities[match.iso_a3] ?? [], w, h, maskBounds, match.bestAngle, getAllFeatures(), maskSize ?? undefined, match.name, vs, null, getAllSeaFeatures())
   }
 
   useEffect(() => {

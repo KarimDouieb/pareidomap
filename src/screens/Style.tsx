@@ -3,7 +3,7 @@ import { ArrowLeft, Share2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
-import { getFeatureByIso, getAllFeatures, type MatchResult } from '@/lib/matcher'
+import { getFeatureByIso, getAllFeatures, getAllSeaFeatures, type MatchResult } from '@/lib/matcher'
 import {
   renderCountryMap,
   DEFAULT_MAP_STYLE,
@@ -18,10 +18,11 @@ import { computeLayout } from '@/lib/layout'
 import { PhotoMapCanvas } from '@/components/PhotoMapCanvas'
 import type { MaskBounds } from '@/lib/contour'
 
-const TOGGLE_ROWS: { key: keyof Pick<MapStyle, 'showCities' | 'showBorders' | 'showNeighbors' | 'showNeighborLabels'>; label: string }[] = [
+const TOGGLE_ROWS: { key: keyof Pick<MapStyle, 'showCities' | 'showBorders' | 'showNeighbors' | 'showNeighborLabels' | 'showSeaLabels'>; label: string }[] = [
   { key: 'showCities', label: 'Capital & cities' },
   { key: 'showNeighbors', label: 'Bordering countries' },
   { key: 'showNeighborLabels', label: 'Country labels' },
+  { key: 'showSeaLabels', label: 'Sea & ocean labels' },
   { key: 'showBorders', label: 'Show borders' },
 ]
 
@@ -60,7 +61,7 @@ export function Style({
     const feature = getFeatureByIso(match.iso_a3)
     if (!feature) return
     const vs = maskBounds && maskSize ? computeLayout(w, h, maskBounds, maskSize).vertShift : 0
-    renderCountryMap(svg, feature, cities[match.iso_a3] ?? [], w, h, maskBounds, match.bestAngle, getAllFeatures(), maskSize ?? undefined, match.name, vs, mapStyle)
+    renderCountryMap(svg, feature, cities[match.iso_a3] ?? [], w, h, maskBounds, match.bestAngle, getAllFeatures(), maskSize ?? undefined, match.name, vs, mapStyle, getAllSeaFeatures())
   }
 
   useEffect(() => {

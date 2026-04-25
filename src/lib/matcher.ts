@@ -23,6 +23,7 @@ interface CountryMeta {
 
 let countryMeta: CountryMeta[] = []
 let worldFeatures: Map<string, object> = new Map()
+let seaFeaturesList: object[] = []
 
 async function cachedFetch(url: string): Promise<Response> {
   const cache = await caches.open(CACHE_NAME)
@@ -62,6 +63,17 @@ export function getFeatureByIso(iso: string): object | null {
 
 export function getAllFeatures(): object[] {
   return Array.from(worldFeatures.values())
+}
+
+export async function loadSeaData(): Promise<void> {
+  if (seaFeaturesList.length > 0) return
+  const res = await cachedFetch(`${BASE}worldSeas.json`)
+  const data = await res.json() as { features: object[] }
+  seaFeaturesList = data.features
+}
+
+export function getAllSeaFeatures(): object[] {
+  return seaFeaturesList
 }
 
 const ROTATION_OFFSETS = Array.from({ length: 71 }, (_, i) => i - 35)
