@@ -92,8 +92,15 @@ export function renderCountryMap(
   const countryCx = (bx0 + bx1) / 2
   const countryCy = (by0 + by1) / 2
 
-  // Compute bounding box of the ROTATED mainland polygon so scale matches
-  // what normPts sees after rotation in the debug panel.
+  // ── Step 3: Rotate the mainland bbox around countryCx/Cy ──────────────────────
+  // We rotate in the same Y-down SVG convention used later (rotate(bestAngle)).
+  // This gives us:
+  //   countryMaxDim  — the scale denominator that matches maskMaxDim
+  //   rcxOffset/rcyOffset — how far the bbox CENTRE drifts from the rotation pivot
+  //
+  // Key insight: normalizePoly (used during matching) centres on the bbox centre of
+  // the ROTATED polygon, not on the rotation pivot. For asymmetric shapes the two
+  // differ. We record the drift here so we can compensate the final translation.
   const rad = bestAngle * Math.PI / 180
   const cosA = Math.cos(rad), sinA = Math.sin(rad)
   let minRX = Infinity, maxRX = -Infinity, minRY = Infinity, maxRY = -Infinity
@@ -101,21 +108,42 @@ export function renderCountryMap(
     const pt = tempProj(coords as [number, number])
     if (!pt) continue
     const dx = pt[0] - countryCx, dy = pt[1] - countryCy
-    const rx = dx * cosA - dy * sinA
-    const ry = dx * sinA + dy * cosA
+    const rx = dx * cosA - dy * sinA   // rotated x, relative to countryCx/Cy
+    const ry = dx * sinA + dy * cosA   // rotated y, relative to countryCx/Cy
     if (rx < minRX) minRX = rx; if (rx > maxRX) maxRX = rx
     if (ry < minRY) minRY = ry; if (ry > maxRY) maxRY = ry
   }
-  const countryMaxDim = (maxRX > minRX)
+  const hasRotatedBBox = maxRX > minRX
+  // Max span of the rotated mainland — used to scale the overlay to match maskMaxDim.
+  const countryMaxDim = hasRotatedBBox
     ? Math.max(maxRX - minRX, maxRY - minRY)
     : Math.max(bx1 - bx0, by1 - by0)
+  // Bbox centre of the rotated mainland, expressed as an offset from the rotation
+  // pivot (countryCx, countryCy) in the rotated frame.  Zero for a symmetric shape;
+  // non-zero (and angle-dependent) for anything else.
+  const rcxOffset = hasRotatedBBox ? (minRX + maxRX) / 2 : 0
+  const rcyOffset = hasRotatedBBox ? (minRY + maxRY) / 2 : 0
 
-  // ── Compute SVG-space transform ─────────────────────────────────────────────
+  // ── Step 4: Compute the SVG transform that overlays the country on the mask ───
+  //
+  // The full transform chain (applied right-to-left in SVG):
+  //   translate(-countryCx, -countryCy)  — move country bbox centre to origin
+  //   scale(overlayScale)                — scale so country max-dim = mask max-dim
+  //   rotate(bestAngle)                  — align country to user shape (Y-down = +angle CW)
+  //   translate(alignedMaskCx, …)        — place at user mask centre in display space
+  //
+  // Why "aligned": rotating an asymmetric polygon around its own bbox centre shifts
+  // the bbox centre of the result.  alignedMaskCx/Cy compensates for that drift
+  // (rcxOffset/rcyOffset, already in scaled display units) so the *rotated* country
+  // bbox centre lands exactly on maskCx/maskCy — matching what normalizePoly does
+  // during shape matching.
   let transform: string
   let maskCx = width / 2, maskCy = height / 2, overlayScale = 1
+  // alignedMask* is maskCx/maskCy shifted to absorb the rotated-bbox-centre drift.
+  let alignedMaskCx = maskCx, alignedMaskCy = maskCy
   if (maskBounds && countryMaxDim > 0) {
-    // Apply object-cover transform: mask coords are in natural image space,
-    // but the photo is displayed with object-cover in the container.
+    // Convert mask bounds (normalised image coords) to display-space pixels,
+    // accounting for CSS object-cover scaling and the vertical centering shift.
     const imgW = maskSize?.w ?? width
     const imgH = maskSize?.h ?? height
     const coverScale = Math.max(width / imgW, height / imgH)
@@ -125,7 +153,11 @@ export function renderCountryMap(
     maskCy = maskBounds.normCy * imgH * coverScale + offsetY + verticalShift
     const maskMaxDim = Math.max(maskBounds.normW * imgW, maskBounds.normH * imgH) * coverScale
     overlayScale = maskMaxDim / countryMaxDim
-    transform = `translate(${maskCx},${maskCy}) rotate(${bestAngle}) scale(${overlayScale}) translate(${-countryCx},${-countryCy})`
+    // Compensate for the rotated-bbox-centre drift so the visual centre of the
+    // rotated country lands on (maskCx, maskCy) rather than drifting from it.
+    alignedMaskCx = maskCx - overlayScale * rcxOffset
+    alignedMaskCy = maskCy - overlayScale * rcyOffset
+    transform = `translate(${alignedMaskCx},${alignedMaskCy}) rotate(${bestAngle}) scale(${overlayScale}) translate(${-countryCx},${-countryCy})`
   } else {
     // Fallback: fit to frame
     const proj = geoMercator().fitExtent([[40, 40], [width - 40, height - 40]], feature as GeoPermissibleObjects)
@@ -197,8 +229,8 @@ export function renderCountryMap(
       if (!projected) continue
       const dx = (projected[0] - countryCx) * overlayScale
       const dy = (projected[1] - countryCy) * overlayScale
-      const px = maskCx + dx * cosA - dy * sinA
-      const py = maskCy + dx * sinA + dy * cosA
+      const px = alignedMaskCx + dx * cosA - dy * sinA
+      const py = alignedMaskCy + dx * sinA + dy * cosA
 
       if (city.capital) {
         cityG.append('circle').attr('cx', px).attr('cy', py).attr('r', 8 * textScale)
@@ -221,7 +253,7 @@ export function renderCountryMap(
   if (s.showNeighborLabels && allFeatures.length > 0) {
     renderNeighborLabels(
       svg, allFeatures, feature,
-      tempProj, tempPathGen, maskCx, maskCy,
+      tempProj, tempPathGen, alignedMaskCx, alignedMaskCy,
       countryCx, countryCy, countryMaxDim, overlayScale, cosA, sinA,
       width, height, fontFamily, s.borderColor,
     )
@@ -230,7 +262,7 @@ export function renderCountryMap(
   if (s.showSeaLabels && seaFeatures.length > 0) {
     renderSeaLabels(
       svg, seaFeatures, tempProj,
-      maskCx, maskCy, countryCx, countryCy,
+      alignedMaskCx, alignedMaskCy, countryCx, countryCy,
       overlayScale, cosA, sinA,
       width, height, fontFamily, s.borderColor,
     )
