@@ -16,6 +16,7 @@ import {
 import { loadCities } from '@/lib/cities'
 import { computeLayout } from '@/lib/layout'
 import { PhotoMapCanvas } from '@/components/PhotoMapCanvas'
+import { renderComposite } from '@/lib/exportImage'
 import type { MaskBounds } from '@/lib/contour'
 
 const TOGGLE_ROWS: { key: keyof Pick<MapStyle, 'showCities' | 'showBorders' | 'showNeighbors' | 'showNeighborLabels' | 'showSeaLabels'>; label: string }[] = [
@@ -39,17 +40,20 @@ export function Style({
   maskBounds,
   maskSize,
   onBack,
+  onExport,
 }: {
   match: MatchResult
   photo: string | null
   maskBounds: MaskBounds | null
   maskSize: { w: number; h: number } | null
   onBack: () => void
+  onExport: (blob: Blob) => void
 }) {
   const svgRef = useRef<SVGSVGElement>(null)
   const [cities, setCities] = useState<Record<string, CityDot[]>>({})
   const [mapStyle, setMapStyle] = useState<MapStyle>(DEFAULT_MAP_STYLE)
   const [containerSize, setContainerSize] = useState<{ w: number; h: number } | null>(null)
+  const [exporting, setExporting] = useState(false)
 
   useEffect(() => {
     loadCities().then(setCities).catch(() => {})
@@ -70,6 +74,17 @@ export function Style({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cities, maskBounds, maskSize, containerSize, mapStyle])
 
+  async function handleExport() {
+    if (!svgRef.current || !containerSize || !photo) return
+    setExporting(true)
+    try {
+      const blob = await renderComposite(photo, svgRef.current, containerSize.w, containerSize.h, maskBounds, maskSize)
+      onExport(blob)
+    } finally {
+      setExporting(false)
+    }
+  }
+
   function update(patch: Partial<MapStyle>) {
     setMapStyle(s => ({ ...s, ...patch }))
   }
@@ -88,8 +103,14 @@ export function Style({
           <div className="text-sm font-semibold">Style</div>
           <div className="text-xs text-muted-foreground font-mono tracking-widest">CUSTOMISE</div>
         </div>
-        <button className="w-9 h-9 rounded-[10px] border border-border flex items-center justify-center">
-          <Share2 className="w-4 h-4" />
+        <button
+          className="w-9 h-9 rounded-[10px] border border-border flex items-center justify-center disabled:opacity-40"
+          onClick={handleExport}
+          disabled={exporting}
+        >
+          {exporting
+            ? <div className="w-4 h-4 rounded-full border-2 border-foreground border-t-transparent animate-spin" />
+            : <Share2 className="w-4 h-4" />}
         </button>
       </div>
 

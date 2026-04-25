@@ -5,10 +5,11 @@ import { Preview } from '@/screens/Preview'
 import { Trace, type TraceContinuePayload } from '@/screens/Trace'
 import { Result } from '@/screens/Result'
 import { Style } from '@/screens/Style'
+import { Export } from '@/screens/Export'
 import { loadCountryData, loadSeaData, matchCountries, type MatchResult } from '@/lib/matcher'
 import { extractLargestBlob, traceContour, simplifyPolygon, type MaskBounds, type Point } from '@/lib/contour'
 
-type Screen = 'onboarding' | 'camera' | 'preview' | 'trace' | 'result' | 'style'
+type Screen = 'onboarding' | 'camera' | 'preview' | 'trace' | 'result' | 'style' | 'export'
 
 export default function App() {
   const [screen, setScreen] = useState<Screen>('onboarding')
@@ -19,6 +20,7 @@ export default function App() {
   const [userPoly, setUserPoly] = useState<Point[] | null>(null)
   const [maskSize, setMaskSize] = useState<{ w: number; h: number } | null>(null)
   const [selectedMatch, setSelectedMatch] = useState<MatchResult | null>(null)
+  const [exportBlob, setExportBlob] = useState<Blob | null>(null)
 
   // Preload country and sea data in the background on mount
   useEffect(() => {
@@ -95,6 +97,13 @@ export default function App() {
             maskBounds={maskBounds}
             maskSize={maskSize}
             onBack={() => setScreen('result')}
+            onExport={(blob) => { setExportBlob(blob); setScreen('export') }}
+          />
+        )}
+        {screen === 'export' && exportBlob && (
+          <Export
+            blob={exportBlob}
+            onBack={() => setScreen('style')}
           />
         )}
       </div>
