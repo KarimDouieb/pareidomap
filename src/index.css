@@ -27,7 +27,8 @@
   }
 
   body {
-    @apply bg-background text-foreground;
+    background-color: #1f2025;
+    @apply text-foreground;
     font-family: 'Satoshi', ui-sans-serif, system-ui, -apple-system, sans-serif;
     -webkit-font-smoothing: antialiased;
   }

@@ -29,15 +29,14 @@ export function About({
           About
         </h1>
 
-        <div className="mt-8 space-y-5 text-sm text-muted-foreground leading-[1.7]">
-          <p>
-            PareidoMap is a visual experiment at the intersection of perception and cartography.
-            It explores pareidolia — the tendency to see familiar patterns in random shapes — through the lens of geography.
-          </p>
-          <p>
-            Snap any pattern around you. A stain on a wall, a cloud at dusk, a crumb on a plate.
-            Trace its outline and we'll find the country it's been pretending to be all along.
-          </p>
+        <div className="mt-8 space-y-5 text-md text-muted-foreground leading-[1.7]">
+          <div className="font-bold mb-2">Your brain is constantly making sense of chaos.</div>
+          <p>It finds patterns where there are none. Shapes in the noise. Meaning in randomness. This phenomenon is called pareidolia.
+PareidoMap plays with that instinct.A shadow becomes a coastline. A spill turns into a continent. The world quietly reshapes itself into maps, if you pay attention.</p>
+
+          <div className="font-bold mb-2">About me</div>
+<p>I’m Karim Douieb, working at the intersection of data, design, and storytelling. Through my work in data visualization and as co-founder of Jetpack.AI, I explore ways to make complex information feel intuitive and alive.
+This app is a small, playful extension of that: seeing patterns, and sharing that moment of recognition.</p>
         </div>
 
         {/* Social links */}

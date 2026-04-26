@@ -170,13 +170,13 @@ export function Result({
                 {currentMatch.subregion ? ` — ${currentMatch.subregion}` : ''}
               </div>
             </div>
-            <Button
+            {/* <Button
               variant="outline"
               className="font-mono uppercase tracking-widest text-xs rounded-full shrink-0"
               onClick={() => currentMatch && onStyle?.(currentMatch)}
             >
               Style +
-            </Button>
+            </Button> */}
           </div>
         </div>
       )}
@@ -216,7 +216,7 @@ export function Result({
           className="flex-1 font-mono uppercase tracking-widest text-xs rounded-full"
           onClick={() => currentMatch && onStyle?.(currentMatch)}
         >
-          Looks Good →
+          Style →
         </Button>
       </div>
     </div>
