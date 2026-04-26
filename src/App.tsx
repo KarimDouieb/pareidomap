@@ -6,10 +6,11 @@ import { Trace, type TraceContinuePayload } from '@/screens/Trace'
 import { Result } from '@/screens/Result'
 import { Style } from '@/screens/Style'
 import { Export } from '@/screens/Export'
+import { Gallery } from '@/screens/Gallery'
 import { loadCountryData, loadSeaData, matchCountries, type MatchResult } from '@/lib/matcher'
 import { extractLargestBlob, traceContour, simplifyPolygon, type MaskBounds, type Point } from '@/lib/contour'
 
-type Screen = 'onboarding' | 'camera' | 'preview' | 'trace' | 'result' | 'style' | 'export'
+type Screen = 'onboarding' | 'camera' | 'preview' | 'trace' | 'result' | 'style' | 'export' | 'gallery'
 
 export default function App() {
   const [screen, setScreen] = useState<Screen>('onboarding')
@@ -59,7 +60,7 @@ export default function App() {
     <div className="min-h-screen bg-[#1f2025] flex items-center justify-center">
       <div className="w-full max-w-[430px] min-h-screen bg-background relative overflow-x-hidden">
         {screen === 'onboarding' && (
-          <Onboarding onStart={() => setScreen('camera')} />
+          <Onboarding onStart={() => setScreen('camera')} onGallery={() => setScreen('gallery')} />
         )}
         {screen === 'camera' && (
           <Camera onCapture={handleCapture} />
@@ -100,11 +101,15 @@ export default function App() {
             onExport={(blob) => { setExportBlob(blob); setScreen('export') }}
           />
         )}
-        {screen === 'export' && exportBlob && (
+        {screen === 'export' && exportBlob && selectedMatch && (
           <Export
             blob={exportBlob}
+            match={{ country: selectedMatch.name, score: selectedMatch.score }}
             onBack={() => setScreen('style')}
           />
+        )}
+        {screen === 'gallery' && (
+          <Gallery onBack={() => setScreen('onboarding')} />
         )}
       </div>
     </div>

@@ -1,4 +1,4 @@
-import { ArrowRight } from 'lucide-react'
+import { ArrowRight, Images } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -14,7 +14,7 @@ const STEPS = [
   { n: 3, title: 'Match', desc: 'We find the closest country' },
 ]
 
-export function Onboarding({ onStart }: { onStart: () => void }) {
+export function Onboarding({ onStart, onGallery }: { onStart: () => void; onGallery: () => void }) {
   return (
     <div className="flex flex-col min-h-screen">
       {/* Top bar */}
@@ -123,8 +123,9 @@ export function Onboarding({ onStart }: { onStart: () => void }) {
           Start hunting
           <ArrowRight className="w-[14px] h-[14px]" />
         </Button>
-        <Button variant="ghost" className="mt-1.5 text-muted-foreground w-full">
-          Sign in
+        <Button variant="ghost" className="mt-1.5 text-muted-foreground w-full gap-2" onClick={onGallery}>
+          <Images className="w-4 h-4" />
+          My gallery
         </Button>
       </div>
     </div>

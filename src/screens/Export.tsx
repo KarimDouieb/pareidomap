@@ -1,13 +1,23 @@
 import { useEffect, useState } from 'react'
-import { ArrowLeft, Download, Share2 } from 'lucide-react'
+import { ArrowLeft, BookImage, Download, Share2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { galleryStore } from '@/lib/gallery'
 
-export function Export({ blob, onBack }: { blob: Blob; onBack: () => void }) {
+export function Export({
+  blob,
+  match,
+  onBack,
+}: {
+  blob: Blob
+  match: { country: string; score: number }
+  onBack: () => void
+}) {
   // URL is created inside useEffect so React StrictMode's mount→cleanup→remount
   // cycle doesn't revoke the URL before the <img> has loaded it.
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [sharing, setSharing] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [galleryState, setGalleryState] = useState<'idle' | 'saving' | 'saved'>('idle')
 
   useEffect(() => {
     const url = URL.createObjectURL(blob)
@@ -37,6 +47,17 @@ export function Export({ blob, onBack }: { blob: Blob; onBack: () => void }) {
     setSaving(true)
     triggerDownload(blob)
     setTimeout(() => setSaving(false), 1000)
+  }
+
+  async function handleSaveToGallery() {
+    if (galleryState !== 'idle') return
+    setGalleryState('saving')
+    try {
+      await galleryStore.save(blob, { country: match.country, score: match.score })
+      setGalleryState('saved')
+    } catch {
+      setGalleryState('idle')
+    }
   }
 
   return (
@@ -72,7 +93,7 @@ export function Export({ blob, onBack }: { blob: Blob; onBack: () => void }) {
       </p>
 
       {/* Action buttons */}
-      <div className="flex gap-3 px-4 pb-8 pt-6 mt-auto">
+      <div className="flex gap-3 px-4 pt-6 mt-auto">
         <Button
           variant="outline"
           className="flex-1 gap-2"
@@ -89,6 +110,19 @@ export function Export({ blob, onBack }: { blob: Blob; onBack: () => void }) {
         >
           <Share2 className="w-4 h-4" />
           {sharing ? 'Opening…' : 'Share'}
+        </Button>
+      </div>
+
+      {/* Save to gallery */}
+      <div className="px-4 pb-8 pt-2">
+        <Button
+          variant="ghost"
+          className="w-full gap-2 text-muted-foreground"
+          onClick={handleSaveToGallery}
+          disabled={galleryState !== 'idle'}
+        >
+          <BookImage className="w-4 h-4" />
+          {galleryState === 'saving' ? 'Saving…' : galleryState === 'saved' ? 'Saved to gallery ✓' : 'Save to gallery'}
         </Button>
       </div>
     </div>
