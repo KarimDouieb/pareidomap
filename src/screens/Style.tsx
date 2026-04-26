@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
-import { ArrowLeft, Share2 } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Menu } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
+import { Button } from '@/components/ui/button'
+import { Logo } from '@/components/Logo'
 import { getFeatureByIso, getAllFeatures, getAllSeaFeatures, type MatchResult } from '@/lib/matcher'
 import {
   renderCountryMap,
@@ -41,6 +43,7 @@ export function Style({
   maskSize,
   onBack,
   onExport,
+  onMenuOpen,
 }: {
   match: MatchResult
   photo: string | null
@@ -48,12 +51,14 @@ export function Style({
   maskSize: { w: number; h: number } | null
   onBack: () => void
   onExport: (blob: Blob) => void
+  onMenuOpen: () => void
 }) {
   const svgRef = useRef<SVGSVGElement>(null)
   const [cities, setCities] = useState<Record<string, CityDot[]>>({})
   const [mapStyle, setMapStyle] = useState<MapStyle>(DEFAULT_MAP_STYLE)
   const [containerSize, setContainerSize] = useState<{ w: number; h: number } | null>(null)
   const [exporting, setExporting] = useState(false)
+  const fontIndex = FONTS.findIndex(f => f.value === mapStyle.font)
 
   useEffect(() => {
     loadCities().then(setCities).catch(() => {})
@@ -89,46 +94,93 @@ export function Style({
     setMapStyle(s => ({ ...s, ...patch }))
   }
 
+  function prevFont() {
+    const i = (fontIndex - 1 + FONTS.length) % FONTS.length
+    update({ font: FONTS[i].value })
+  }
+
+  function nextFont() {
+    const i = (fontIndex + 1) % FONTS.length
+    update({ font: FONTS[i].value })
+  }
+
   return (
-    <div className="flex flex-col min-h-screen">
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 pt-12 pb-3">
+    <div className="flex flex-col min-h-screen px-4">
+      {/* Top bar */}
+      <div className="flex items-center justify-between pt-12 pb-4">
+        <Logo />
         <button
-          onClick={onBack}
-          className="w-9 h-9 rounded-[10px] border border-border flex items-center justify-center"
+          onClick={onMenuOpen}
+          className="w-9 h-9 flex items-center justify-center"
+          aria-label="Menu"
         >
-          <ArrowLeft className="w-4 h-4" />
-        </button>
-        <div className="text-center">
-          <div className="text-sm font-semibold">Style</div>
-          <div className="text-xs text-muted-foreground font-mono tracking-widest">CUSTOMISE</div>
-        </div>
-        <button
-          className="w-9 h-9 rounded-[10px] border border-border flex items-center justify-center disabled:opacity-40"
-          onClick={handleExport}
-          disabled={exporting}
-        >
-          {exporting
-            ? <div className="w-4 h-4 rounded-full border-2 border-foreground border-t-transparent animate-spin" />
-            : <Share2 className="w-4 h-4" />}
+          <Menu className="w-5 h-5" />
         </button>
       </div>
 
       {/* Map preview */}
-      <div className="px-4">
-        <PhotoMapCanvas
-          photo={photo}
-          maskBounds={maskBounds}
-          maskSize={maskSize}
-          svgRef={svgRef}
-          onResize={(w, h) => setContainerSize({ w, h })}
-        />
-      </div>
+      <PhotoMapCanvas
+        photo={photo}
+        maskBounds={maskBounds}
+        maskSize={maskSize}
+        svgRef={svgRef}
+        onResize={(w, h) => setContainerSize({ w, h })}
+      />
 
       {/* Controls */}
-      <div className="px-4 mt-4 space-y-3 pb-10">
+      <div className="mt-4 space-y-3 pb-10">
+        {/* Font carousel */}
+        <div className="rounded-lg border border-border p-4">
+          <div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground mb-3">Font</div>
+          <div className="flex items-center justify-between gap-3">
+            <button onClick={prevFont} className="w-8 h-8 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors">
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <span className="font-mono text-sm tracking-wide">{FONTS[fontIndex]?.label}</span>
+            <button onClick={nextFont} className="w-8 h-8 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors">
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
+        {/* Border color swatches */}
+        <div className="rounded-lg border border-border p-4">
+          <div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground mb-3">Border Color</div>
+          <div className="flex gap-3 flex-wrap">
+            {BORDER_COLORS.map(color => (
+              <button
+                key={color}
+                onClick={() => update({ borderColor: color })}
+                style={{ background: color }}
+                className={cn(
+                  'w-8 h-8 rounded-full border-2 transition-transform',
+                  mapStyle.borderColor === color ? 'border-foreground scale-110' : 'border-transparent',
+                )}
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* Sub-border color swatches */}
+        <div className="rounded-lg border border-border p-4">
+          <div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground mb-3">Sub-border Color</div>
+          <div className="flex gap-3 flex-wrap">
+            {SUB_BORDER_COLORS.map(color => (
+              <button
+                key={color}
+                onClick={() => update({ subBorderColor: color })}
+                style={{ background: color }}
+                className={cn(
+                  'w-8 h-8 rounded-full border-2 transition-transform',
+                  mapStyle.subBorderColor === color ? 'border-foreground scale-110' : 'border-transparent',
+                )}
+              />
+            ))}
+          </div>
+        </div>
+
         {/* Toggles */}
-        <div className="rounded-[14px] border border-border divide-y divide-border">
+        <div className="rounded-lg border border-border divide-y divide-border">
           {TOGGLE_ROWS.map(({ key, label }) => (
             <div key={key} className="flex items-center justify-between px-4 py-3">
               <Label htmlFor={key} className="text-sm font-normal cursor-pointer">{label}</Label>
@@ -140,63 +192,24 @@ export function Style({
             </div>
           ))}
         </div>
+      </div>
 
-        {/* Font */}
-        <div className="rounded-[14px] border border-border p-4">
-          <div className="text-[10px] font-mono text-muted-foreground tracking-widest uppercase mb-2">Font</div>
-          <div className="flex gap-1.5">
-            {FONTS.map(({ value, label }) => (
-              <button
-                key={value}
-                onClick={() => update({ font: value })}
-                className={cn(
-                  'flex-1 py-1.5 text-xs rounded-[8px] border transition-colors',
-                  mapStyle.font === value
-                    ? 'border-[#002FA7] bg-[#002FA7]/10 text-[#002FA7] font-medium'
-                    : 'border-border text-muted-foreground',
-                )}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Border color */}
-        <div className="rounded-[14px] border border-border p-4">
-          <div className="text-[10px] font-mono text-muted-foreground tracking-widest uppercase mb-3">Border Color</div>
-          <div className="flex gap-2.5">
-            {BORDER_COLORS.map(color => (
-              <button
-                key={color}
-                onClick={() => update({ borderColor: color })}
-                style={{ background: color }}
-                className={cn(
-                  'w-8 h-8 rounded-full border-2 transition-transform',
-                  mapStyle.borderColor === color ? 'border-[#002FA7] scale-110' : 'border-transparent',
-                )}
-              />
-            ))}
-          </div>
-        </div>
-
-        {/* Sub-border color */}
-        <div className="rounded-[14px] border border-border p-4">
-          <div className="text-[10px] font-mono text-muted-foreground tracking-widest uppercase mb-3">Sub-border Color</div>
-          <div className="flex gap-2.5">
-            {SUB_BORDER_COLORS.map(color => (
-              <button
-                key={color}
-                onClick={() => update({ subBorderColor: color })}
-                style={{ background: color }}
-                className={cn(
-                  'w-8 h-8 rounded-full border-2 transition-transform',
-                  mapStyle.subBorderColor === color ? 'border-[#002FA7] scale-110' : 'border-transparent',
-                )}
-              />
-            ))}
-          </div>
-        </div>
+      {/* Bottom actions */}
+      <div className="flex gap-3 pb-8 pt-2 mt-auto sticky bottom-0 bg-background">
+        <button
+          onClick={onBack}
+          className="flex-1 text-center font-mono text-xs uppercase tracking-widest text-muted-foreground py-3"
+        >
+          ← Back
+        </button>
+        <Button
+          variant="outline"
+          className="flex-1 font-mono uppercase tracking-widest text-xs rounded-full"
+          onClick={handleExport}
+          disabled={exporting}
+        >
+          {exporting ? 'Saving…' : 'Looks Good →'}
+        </Button>
       </div>
     </div>
   )

@@ -1,19 +1,20 @@
 import { useEffect, useState } from 'react'
-import { ArrowLeft, BookImage, Download, Share2 } from 'lucide-react'
+import { Menu } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Logo } from '@/components/Logo'
 import { galleryStore } from '@/lib/gallery'
 
 export function Export({
   blob,
   match,
   onBack,
+  onMenuOpen,
 }: {
   blob: Blob
   match: { country: string; score: number }
   onBack: () => void
+  onMenuOpen: () => void
 }) {
-  // URL is created inside useEffect so React StrictMode's mount→cleanup→remount
-  // cycle doesn't revoke the URL before the <img> has loaded it.
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [sharing, setSharing] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -32,11 +33,9 @@ export function Export({
       if (typeof navigator.share === 'function' && navigator.canShare?.({ files: [file] })) {
         await navigator.share({ files: [file] })
       } else {
-        // Desktop / unsupported: fall back to a direct download.
         triggerDownload(blob)
       }
     } catch (e) {
-      // AbortError means the user dismissed the share sheet — not a real error.
       if ((e as Error).name !== 'AbortError') triggerDownload(blob)
     } finally {
       setSharing(false)
@@ -61,69 +60,84 @@ export function Export({
   }
 
   return (
-    <div className="flex flex-col min-h-screen">
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 pt-12 pb-3">
+    <div className="flex flex-col min-h-screen px-6">
+      {/* Top bar */}
+      <div className="flex items-center justify-between pt-12">
+        <Logo />
         <button
-          onClick={onBack}
-          className="w-9 h-9 rounded-[10px] border border-border flex items-center justify-center"
+          onClick={onMenuOpen}
+          className="w-9 h-9 flex items-center justify-center"
+          aria-label="Menu"
         >
-          <ArrowLeft className="w-4 h-4" />
+          <Menu className="w-5 h-5" />
         </button>
-        <div className="text-center">
-          <div className="text-sm font-semibold">Export</div>
-          <div className="text-xs text-muted-foreground font-mono tracking-widest">SHARE OR SAVE</div>
-        </div>
-        {/* Spacer to balance the header */}
-        <div className="w-9 h-9" />
       </div>
 
-      {/* Full-resolution preview */}
-      <div className="px-4">
-        <div className="w-full rounded-[14px] overflow-hidden bg-muted flex items-center justify-center" style={{ aspectRatio: '1/1' }}>
+      {/* Preview */}
+      <div className="mt-6">
+        <div className="w-full rounded-xl overflow-hidden bg-muted" style={{ aspectRatio: '1/1' }}>
           {previewUrl
             ? <img src={previewUrl} alt="Export preview" className="w-full h-full object-cover" />
-            : <div className="w-8 h-8 rounded-full border-2 border-muted-foreground border-t-transparent animate-spin opacity-40" />}
+            : <div className="w-full h-full flex items-center justify-center">
+                <div className="w-8 h-8 rounded-full border-2 border-muted-foreground border-t-transparent animate-spin opacity-40" />
+              </div>
+          }
         </div>
       </div>
 
-      {/* Info line */}
-      <p className="text-center text-xs text-muted-foreground font-mono mt-3 px-4">
-        High-resolution JPEG · {Math.round(blob.size / 1024)} KB
-      </p>
+      {/* Match info */}
+      <div className="mt-4">
+        <div className="text-[22px] font-bold tracking-[-0.02em]">{match.country}</div>
+        <div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground mt-1">
+          Score {match.score}% · {Math.round(blob.size / 1024)} KB
+        </div>
+      </div>
+
+      {/* Gallery status */}
+      <div className="mt-3">
+        {galleryState === 'saved' ? (
+          <p className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
+            Saved in Gallery ✓
+          </p>
+        ) : (
+          <button
+            onClick={handleSaveToGallery}
+            disabled={galleryState !== 'idle'}
+            className="font-mono text-xs uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+          >
+            {galleryState === 'saving' ? 'Saving…' : 'Save to Gallery →'}
+          </button>
+        )}
+      </div>
 
       {/* Action buttons */}
-      <div className="flex gap-3 px-4 pt-6 mt-auto">
+      <div className="flex gap-3 mt-auto pt-6 pb-4">
         <Button
           variant="outline"
-          className="flex-1 gap-2"
+          className="flex-1 font-mono uppercase tracking-widest text-xs rounded-full"
           onClick={handleSave}
           disabled={saving}
         >
-          <Download className="w-4 h-4" />
-          {saving ? 'Saved' : 'Save'}
+          {saving ? 'Saved ✓' : 'Download ↑'}
         </Button>
         <Button
-          className="flex-1 gap-2"
+          variant="outline"
+          className="flex-1 font-mono uppercase tracking-widest text-xs rounded-full"
           onClick={handleShare}
           disabled={sharing}
         >
-          <Share2 className="w-4 h-4" />
-          {sharing ? 'Opening…' : 'Share'}
+          {sharing ? 'Opening…' : 'Share ↑'}
         </Button>
       </div>
 
-      {/* Save to gallery */}
-      <div className="px-4 pb-8 pt-2">
-        <Button
-          variant="ghost"
-          className="w-full gap-2 text-muted-foreground"
-          onClick={handleSaveToGallery}
-          disabled={galleryState !== 'idle'}
+      {/* Back */}
+      <div className="pb-8">
+        <button
+          onClick={onBack}
+          className="w-full text-center font-mono text-xs uppercase tracking-widest text-muted-foreground py-2"
         >
-          <BookImage className="w-4 h-4" />
-          {galleryState === 'saving' ? 'Saving…' : galleryState === 'saved' ? 'Saved to gallery ✓' : 'Save to gallery'}
-        </Button>
+          ← Back
+        </button>
       </div>
     </div>
   )

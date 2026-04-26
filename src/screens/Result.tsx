@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ArrowLeft, ArrowRight, MoreHorizontal } from 'lucide-react'
+import { Menu } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Logo } from '@/components/Logo'
 import { cn } from '@/lib/utils'
 import { getFeatureByIso, getAllFeatures, getAllSeaFeatures, getDebugShapes, type MatchResult, type ShapeDebug } from '@/lib/matcher'
 import { renderCountryMap, type CityDot } from '@/lib/mapRenderer'
@@ -24,22 +25,22 @@ function normPts(pts: Point[], size: number, flipY = true): string {
 }
 
 function ShapeCard({ debug, isSelected, onClick }: { debug: ShapeDebug; isSelected: boolean; onClick: () => void }) {
-  const SIZE = 88
+  const SIZE = 72
   const userRaw = normPts(debug.userRawPoly, SIZE, true)
   const countryRaw = debug.countryRawPoly ? normPts(debug.countryRawPoly, SIZE, true) : ''
   return (
     <button
       onClick={onClick}
       className={cn(
-        'flex flex-col items-center gap-0.5 rounded-[8px] p-0.5 transition-all cursor-pointer',
-        isSelected ? 'ring-2 ring-[#002FA7]' : 'ring-1 ring-transparent hover:ring-border',
+        'flex flex-col items-center gap-1 rounded-lg p-1 transition-all cursor-pointer shrink-0',
+        isSelected ? 'ring-2 ring-foreground' : 'ring-1 ring-transparent hover:ring-border',
       )}
     >
-      <svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`} className={cn('rounded', isSelected ? 'bg-[#002FA7]/10' : 'bg-muted')}>
+      <svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`} className={cn('rounded', isSelected ? 'bg-foreground/10' : 'bg-muted')}>
         {countryRaw && <polygon points={countryRaw} fill="none" stroke="#ef4444" strokeWidth="1" strokeLinejoin="round" opacity="0.85" />}
         <polygon points={userRaw} fill="none" stroke="#3b82f6" strokeWidth="1" strokeLinejoin="round" opacity="0.85" />
       </svg>
-      <span className={cn('text-[9px] font-mono truncate max-w-[88px] text-center', isSelected ? 'text-[#002FA7] font-medium' : 'text-muted-foreground')}>{debug.name}</span>
+      <span className={cn('text-[9px] font-mono truncate max-w-[72px] text-center', isSelected ? 'text-foreground font-medium' : 'text-muted-foreground')}>{debug.name}</span>
     </button>
   )
 }
@@ -53,6 +54,7 @@ export function Result({
   photo,
   onRetake,
   onStyle,
+  onMenuOpen,
 }: {
   matches: MatchResult[] | null
   maskBounds: MaskBounds | null
@@ -62,6 +64,7 @@ export function Result({
   photo: string | null
   onRetake: () => void
   onStyle?: (match: MatchResult) => void
+  onMenuOpen: () => void
 }) {
   const [activeIndex, setActiveIndex] = useState(0)
   const [cities, setCities] = useState<Record<string, CityDot[]>>({})
@@ -101,122 +104,90 @@ export function Result({
   }, [matches, userPoly])
 
   const loading = !matches
+  const currentMatch = matches?.[activeIndex]
 
   return (
-    <div className="flex flex-col min-h-screen">
-      {/* Nav bar */}
-      <div className="flex items-center justify-between px-4 pt-12 pb-3">
+    <div className="flex flex-col min-h-screen px-4">
+      {/* Top bar */}
+      <div className="flex items-center justify-between pt-12 pb-4">
+        <Logo />
         <button
-          onClick={() => activeIndex > 0 ? setActiveIndex(i => i - 1) : onRetake()}
-          className="w-9 h-9 rounded-[10px] border border-border flex items-center justify-center"
+          onClick={onMenuOpen}
+          className="w-9 h-9 flex items-center justify-center"
+          aria-label="Menu"
         >
-          <ArrowLeft className="w-4 h-4" />
-        </button>
-        <div className="text-center">
-          <div className="text-sm font-semibold">Best match</div>
-          {matches && (
-            <div className="text-xs text-muted-foreground font-mono">
-              {activeIndex + 1} of {matches.length} candidates
-            </div>
-          )}
-        </div>
-        <button className="w-9 h-9 rounded-[10px] border flex items-center justify-center border-[#002FA7] text-[#002FA7]">
-          <MoreHorizontal className="w-4 h-4" />
+          <Menu className="w-5 h-5" />
         </button>
       </div>
 
       {/* Map area */}
-      <div className="px-4">
-        <PhotoMapCanvas
-          photo={photo}
-          maskBounds={maskBounds}
-          maskSize={maskSize}
-          svgRef={svgRef}
-          onResize={(w, h) => setContainerSize({ w, h })}
-        >
-          {loading && (
-            <div className="absolute inset-0 flex items-center justify-center bg-black/20">
-              <div className="w-8 h-8 rounded-full border-2 border-white border-t-transparent animate-spin opacity-80" />
-            </div>
-          )}
-          {debugPoly && debugPoly.length > 1 && maskSize && polyTransform && (
-            <svg className="absolute inset-0 w-full h-full pointer-events-none">
-              <g transform={`translate(${polyTransform.offsetX}, ${polyTransform.offsetY}) scale(${polyTransform.coverScale})`}>
-                <polygon
-                  points={debugPoly.map(([x, y]) => `${x},${y}`).join(' ')}
-                  fill="none"
-                  stroke="#00ff88"
-                  strokeWidth={maskSize.w * 0.003}
-                  strokeLinejoin="round"
-                  opacity="0.8"
-                />
-              </g>
-            </svg>
-          )}
-        </PhotoMapCanvas>
-      </div>
+      <PhotoMapCanvas
+        photo={photo}
+        maskBounds={maskBounds}
+        maskSize={maskSize}
+        svgRef={svgRef}
+        onResize={(w, h) => setContainerSize({ w, h })}
+      >
+        {loading && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+            <div className="w-8 h-8 rounded-full border-2 border-white border-t-transparent animate-spin opacity-80" />
+          </div>
+        )}
+        {debugPoly && debugPoly.length > 1 && maskSize && polyTransform && (
+          <svg className="absolute inset-0 w-full h-full pointer-events-none">
+            <g transform={`translate(${polyTransform.offsetX}, ${polyTransform.offsetY}) scale(${polyTransform.coverScale})`}>
+              <polygon
+                points={debugPoly.map(([x, y]) => `${x},${y}`).join(' ')}
+                fill="none"
+                stroke="#00ff88"
+                strokeWidth={maskSize.w * 0.003}
+                strokeLinejoin="round"
+                opacity="0.8"
+              />
+            </g>
+          </svg>
+        )}
+      </PhotoMapCanvas>
 
-      {/* Score card */}
-      {matches && matches[activeIndex] && (
-        <div className="mx-4 mt-3 rounded-[14px] border border-border p-4">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <div className="text-[10px] font-mono text-muted-foreground tracking-widest uppercase mb-1">
-                Identified as
-              </div>
-              <div className="text-2xl font-semibold" style={{ fontFamily: 'var(--font-serif)' }}>
-                {matches[activeIndex].name}
-              </div>
-              <div className="text-xs text-muted-foreground mt-0.5">
-                {matches[activeIndex].continent}
-                {matches[activeIndex].subregion ? ` — ${matches[activeIndex].subregion}` : ''}
-              </div>
+      {/* Match info */}
+      {currentMatch && (
+        <div className="mt-4">
+          <div className="flex items-baseline justify-between gap-4">
+            <div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+              Matching Country
             </div>
-            <div className="text-right shrink-0">
-              <div className="text-[10px] font-mono text-muted-foreground tracking-widest uppercase mb-1">
-                Score
-              </div>
-              <div className="text-3xl font-bold text-[#002FA7] leading-none">
-                {matches[activeIndex].score}
-                <span className="text-base font-normal">%</span>
-              </div>
+            <div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+              Score {currentMatch.score}%
             </div>
           </div>
-
-          <div className="flex items-center justify-between mt-3">
-            <button
-              onClick={() => setActiveIndex(i => Math.max(0, i - 1))}
-              className={cn(
-                'w-9 h-9 rounded-[10px] border flex items-center justify-center',
-                activeIndex === 0 ? 'border-border text-muted-foreground' : 'border-[#002FA7] text-[#002FA7]',
-              )}
+          <div className="mt-1 flex items-end justify-between gap-4">
+            <div>
+              <div className="text-[28px] font-bold leading-tight tracking-[-0.02em]">
+                {currentMatch.name}
+              </div>
+              <div className="text-xs text-muted-foreground mt-0.5">
+                {currentMatch.continent}
+                {currentMatch.subregion ? ` — ${currentMatch.subregion}` : ''}
+              </div>
+            </div>
+            <Button
+              variant="outline"
+              className="font-mono uppercase tracking-widest text-xs rounded-full shrink-0"
+              onClick={() => currentMatch && onStyle?.(currentMatch)}
             >
-              <ArrowLeft className="w-4 h-4" />
-            </button>
-            <span className="text-xs font-mono text-muted-foreground">
-              {activeIndex + 1} / {matches.length}
-            </span>
-            <button
-              onClick={() => setActiveIndex(i => Math.min(matches.length - 1, i + 1))}
-              className={cn(
-                'w-9 h-9 rounded-[10px] border flex items-center justify-center',
-                activeIndex === matches.length - 1 ? 'border-border text-muted-foreground' : 'border-[#002FA7] text-[#002FA7]',
-              )}
-            >
-              <ArrowRight className="w-4 h-4" />
-            </button>
+              Style +
+            </Button>
           </div>
         </div>
       )}
 
+      {/* Shape cards row */}
       {debugShapes && (
-        <div className="mx-4 mt-3 rounded-[14px] border border-border p-4">
-          <div className="text-[10px] font-mono text-muted-foreground tracking-widest uppercase mb-3">
-            Best Matches &nbsp;
-            <span className="text-blue-500">■</span> shape &nbsp;
-            <span className="text-red-500">■</span> country
+        <div className="mt-4">
+          <div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground mb-2">
+            Best Matches
           </div>
-          <div className="grid grid-cols-4 gap-3">
+          <div className="flex gap-2 overflow-x-auto pb-2 -mx-1 px-1">
             {debugShapes.map(d => (
               <ShapeCard
                 key={d.iso}
@@ -232,16 +203,20 @@ export function Result({
         </div>
       )}
 
-      <div className="flex gap-3 px-4 pb-8 pt-4 mt-auto">
-        <Button variant="outline" className="flex-1" onClick={onRetake}>
-          Retake
-        </Button>
-        <Button
-          className="flex-1"
-          onClick={() => matches?.[activeIndex] && onStyle?.(matches[activeIndex])}
+      {/* Bottom actions */}
+      <div className="flex gap-3 pb-8 pt-4 mt-auto">
+        <button
+          onClick={onRetake}
+          className="flex-1 text-center font-mono text-xs uppercase tracking-widest text-muted-foreground py-3"
         >
-          Style this
-          <ArrowRight className="w-[14px] h-[14px]" />
+          ← Back
+        </button>
+        <Button
+          variant="outline"
+          className="flex-1 font-mono uppercase tracking-widest text-xs rounded-full"
+          onClick={() => currentMatch && onStyle?.(currentMatch)}
+        >
+          Looks Good →
         </Button>
       </div>
     </div>
