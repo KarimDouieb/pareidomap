@@ -25,7 +25,7 @@ export function Onboarding({ onStart, onGallery }: { onStart: () => void; onGall
 
       {/* Hero illustration */}
       <div className="px-6 mt-9">
-        <div className="w-full aspect-[4/3] rounded-[14px] border border-border bg-[#FAFAFA] relative overflow-hidden">
+        <div className="w-full aspect-square rounded-[14px] border border-border bg-[#FAFAFA] relative overflow-hidden">
           <svg
             width="100%"
             height="100%"

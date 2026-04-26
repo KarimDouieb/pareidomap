@@ -80,7 +80,7 @@ export function Export({
 
       {/* Full-resolution preview */}
       <div className="px-4">
-        <div className="w-full rounded-[14px] overflow-hidden bg-muted flex items-center justify-center" style={{ aspectRatio: '4/3' }}>
+        <div className="w-full rounded-[14px] overflow-hidden bg-muted flex items-center justify-center" style={{ aspectRatio: '1/1' }}>
           {previewUrl
             ? <img src={previewUrl} alt="Export preview" className="w-full h-full object-cover" />
             : <div className="w-8 h-8 rounded-full border-2 border-muted-foreground border-t-transparent animate-spin opacity-40" />}

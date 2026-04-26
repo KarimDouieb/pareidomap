@@ -39,7 +39,7 @@ export function PhotoMapCanvas({ photo, maskBounds, maskSize, svgRef, onResize, 
     <div
       ref={containerRef}
       className="w-full rounded-[14px] overflow-hidden relative"
-      style={{ aspectRatio: '4/3' }}
+      style={{ aspectRatio: '1/1' }}
     >
       {photo && (
         <img
